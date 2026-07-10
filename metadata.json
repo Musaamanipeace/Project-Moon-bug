@@ -1,0 +1,6 @@
+{
+  "name": "Moonbug",
+  "description": "Offline-first Astral Diary and Lunar Timetable. Track moon cycles, log experiences, and coordinate with lunar cycles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
