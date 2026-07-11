@@ -185,6 +185,37 @@ export default function App() {
   const userBirthPhase = birthDateObj ? getMoonPhaseDetails(userBirthAge) : null;
   const birthCycles = birthDateObj ? getCyclesSinceBirth(birthDateObj, new Date()) : 0;
 
+  // Generate 24 sampler points for trajectories
+  const baseDate = new Date();
+  const sunPoints: [number, number][] = [];
+  const moonPoints: [number, number][] = [];
+
+  for (let h = 0; h <= 24; h++) {
+    const tempDate = new Date(baseDate);
+    tempDate.setHours(h, 0, 0, 0);
+    const status = getLunarStatus(tempDate);
+    
+    const x = (h / 24) * 1000;
+    const sAngleRad = (status.sunAngle * Math.PI) / 180;
+    const sY = 500 - 300 * Math.sin(sAngleRad);
+    sunPoints.push([x, sY]);
+
+    const mAngleRad = ((status.sunAngle - status.moonAngle) * Math.PI) / 180;
+    const mY = 500 - 300 * Math.sin(mAngleRad);
+    moonPoints.push([x, mY]);
+  }
+
+  const sunPath = `M ${sunPoints.map(p => `${p[0]},${p[1]}`).join(" L ")}`;
+  const moonPath = `M ${moonPoints.map(p => `${p[0]},${p[1]}`).join(" L ")}`;
+
+  // Active positions based on current progress of the day
+  const currentHourDecimal = baseDate.getHours() + baseDate.getMinutes() / 60;
+  const activeSunX = (currentHourDecimal / 24) * 1000;
+  const activeSunY = 500 - 300 * Math.sin((lunarStatus.sunAngle * Math.PI) / 180);
+
+  const activeMoonX = (currentHourDecimal / 24) * 1000;
+  const activeMoonY = 500 - 300 * Math.sin(((lunarStatus.sunAngle - lunarStatus.moonAngle) * Math.PI) / 180);
+
   return (
     <div className={`min-h-screen text-slate-100 flex flex-col font-sans transition-colors duration-300 ${theme}`}>
       {/* Background Starry Nebula Canvas */}
@@ -269,7 +300,7 @@ export default function App() {
                   <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 pb-3 mb-4">
                     <div>
                       <h2 className="text-sm font-bold font-mono text-yellow-400 uppercase tracking-wider">
-                        🌙 Celestial Moon Dial & Analog Clock
+                        🌙 Celestial Moon Dial & Horizon Wave Viewport
                       </h2>
                       <p className="text-[10px] text-slate-400 font-mono mt-0.5">Location Coordinated: {locationText}</p>
                     </div>
@@ -295,75 +326,105 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    {/* Visual Dial (Analog Clock & Orbit system) */}
-                    <div className="relative aspect-square w-64 h-64 sm:w-72 sm:h-72 bg-[#05060b] border-2 border-slate-800/80 rounded-full mx-auto shadow-2xl flex items-center justify-center relative overflow-hidden">
-                      {/* Compass points labels */}
-                      <span className="absolute top-2 text-[9px] font-mono text-slate-500 font-bold">ZENITH</span>
-                      <span className="absolute right-2 text-[9px] font-mono text-slate-500 font-bold">DESCENDING</span>
-                      <span className="absolute bottom-2 text-[9px] font-mono text-slate-500 font-bold">NADIR</span>
-                      <span className="absolute left-2 text-[9px] font-mono text-slate-500 font-bold">ASCENDING</span>
-
+                    {/* Horizontal Wave Viewport */}
+                    <div className="relative aspect-square w-full max-w-[320px] sm:max-w-[360px] md:max-w-full bg-[#05060b] border border-slate-800 rounded-2xl mx-auto shadow-2xl flex items-center justify-center overflow-hidden p-2">
                       {/* Eclipse warning banner */}
                       {lunarStatus.isEclipse && (
-                        <div className="absolute inset-0 bg-red-950/25 flex items-center justify-center z-10">
-                          <span className="px-2 py-0.5 rounded border border-red-500 text-red-400 text-[8px] font-mono font-bold uppercase animate-pulse">
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+                          <span className="px-2 py-0.5 rounded border border-red-500 bg-red-950/80 text-red-400 text-[8px] font-mono font-bold uppercase animate-pulse">
                             Solar Eclipse In Alignment
                           </span>
                         </div>
                       )}
 
-                      {/* Clock ticks mapping around circle */}
-                      {[...Array(12)].map((_, i) => {
-                        const deg = i * 30;
-                        return (
-                          <div
-                            key={i}
-                            className="absolute w-0.5 h-2 bg-slate-800"
+                      <svg viewBox="0 0 1000 1000" className="w-full h-full text-slate-500">
+                        {/* Grid lines for coordinate precision */}
+                        <line x1="100" y1="0" x2="100" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="200" y1="0" x2="200" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="300" y1="0" x2="300" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="400" y1="0" x2="400" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="500" y1="0" x2="500" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="600" y1="0" x2="600" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="700" y1="0" x2="700" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="800" y1="0" x2="800" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="900" y1="0" x2="900" y2="1000" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        
+                        <line x1="0" y1="200" x2="1000" y2="200" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="0" y1="350" x2="1000" y2="350" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="0" y1="650" x2="1000" y2="650" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+                        <line x1="0" y1="800" x2="1000" y2="800" stroke="#11131f" strokeWidth="1" strokeDasharray="5,5" />
+
+                        {/* Static Yellow Horizon dividing line */}
+                        <line x1="0" y1="500" x2="1000" y2="500" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" />
+
+                        {/* Rise and Set labels */}
+                        <text x="30" y="470" fill="#f59e0b" fontSize="22" fontWeight="bold" fontFamily="monospace">
+                          Rise (East)
+                        </text>
+                        <text x="970" y="470" fill="#f59e0b" fontSize="22" fontWeight="bold" fontFamily="monospace" textAnchor="end">
+                          Set (West)
+                        </text>
+
+                        {/* Smooth trajectory lines */}
+                        {/* Sun's blue path wave */}
+                        {showSun && (
+                          <>
+                            {/* Path glow */}
+                            <path d={sunPath} stroke="#60a5fa" strokeWidth="8" fill="none" opacity="0.15" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d={sunPath} stroke="#60a5fa" strokeWidth="3" fill="none" opacity="0.6" strokeLinecap="round" strokeLinejoin="round" />
+                          </>
+                        )}
+
+                        {/* Moon's blue path wave */}
+                        <path d={moonPath} stroke="#3b82f6" strokeWidth="8" fill="none" opacity="0.15" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d={moonPath} stroke="#3b82f6" strokeWidth="3" fill="none" opacity="0.6" strokeLinecap="round" strokeLinejoin="round" />
+
+                        {/* Active indicator nodes */}
+                        {/* Sun Active node */}
+                        {showSun && (
+                          <g transform={`translate(${activeSunX}, ${activeSunY})`} className="transition-all duration-500">
+                            {/* Halo / glow if above horizon */}
+                            {activeSunY < 500 && (
+                              <circle r="35" fill="#f59e0b" opacity="0.25" className="animate-pulse" />
+                            )}
+                            <text
+                              x="0"
+                              y="12"
+                              textAnchor="middle"
+                              fontSize="40"
+                              className="transition-all duration-500"
+                              style={{
+                                filter: activeSunY < 500 ? "drop-shadow(0px 0px 8px rgba(245, 158, 11, 0.8))" : "grayscale(100%) opacity(0.35)"
+                              }}
+                            >
+                              ☀️
+                            </text>
+                          </g>
+                        )}
+
+                        {/* Moon Active node */}
+                        <g transform={`translate(${activeMoonX}, ${activeMoonY})`} className="transition-all duration-500">
+                          {/* Halo / glow if above horizon */}
+                          {activeMoonY < 500 && (
+                            <circle r="35" fill="#3b82f6" opacity="0.25" className="animate-pulse" />
+                          )}
+                          <text
+                            x="0"
+                            y="12"
+                            textAnchor="middle"
+                            fontSize="40"
+                            className="transition-all duration-500"
                             style={{
-                              transform: `rotate(${deg}deg) translate(0, -110px)`,
+                              filter: activeMoonY < 500 ? "drop-shadow(0px 0px 8px rgba(59, 130, 246, 0.8))" : "grayscale(100%) opacity(0.35)"
                             }}
-                          />
-                        );
-                      })}
+                          >
+                            {lunarStatus.phase.emoji}
+                          </text>
+                        </g>
 
-                      {/* Clock hands matching device current time */}
-                      <div
-                        className="absolute h-14 w-0.5 bg-yellow-500 origin-bottom"
-                        style={{
-                          transform: `rotate(${new Date().getHours() * 30 + new Date().getMinutes() * 0.5}deg) translate(0, -28px)`,
-                        }}
-                      />
-                      <div
-                        className="absolute h-20 w-0.5 bg-slate-400 origin-bottom"
-                        style={{
-                          transform: `rotate(${new Date().getMinutes() * 6}deg) translate(0, -40px)`,
-                        }}
-                      />
-
-                      {/* Sun orbit pointer */}
-                      {showSun && (
-                        <div
-                          className="absolute text-yellow-400 text-lg transition-transform duration-1000 z-10"
-                          style={{
-                            transform: `rotate(${lunarStatus.sunAngle}deg) translate(0, -90px)`,
-                          }}
-                        >
-                          ☀️
-                        </div>
-                      )}
-
-                      {/* Moon orbit pointer */}
-                      <div
-                        className="absolute text-white text-xl transition-transform duration-1000 z-10"
-                        style={{
-                          transform: `rotate(${lunarStatus.moonAngle}deg) translate(0, -90px)`,
-                        }}
-                      >
-                        {lunarStatus.phase.emoji}
-                      </div>
-
-                      {/* Core anchor */}
-                      <div className="w-2 h-2 bg-slate-100 rounded-full z-10" />
+                        {/* Current Time Indicator Vertical Line (matching active position X) */}
+                        <line x1={activeSunX} y1="0" x2={activeSunX} y2="1000" stroke="#ffffff" strokeWidth="1" strokeDasharray="3,3" opacity="0.3" />
+                      </svg>
                     </div>
 
                     {/* Numeric Physical Stats Grid */}
