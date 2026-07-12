@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { AstroEvent, Challenge, ChatMessage, Comment, OnlineUser } from "./src/types";
+import { astroCatalogue } from "./src/lib/events";
 
 // Lazy-initialized Gemini AI client
 let aiClient: GoogleGenAI | null = null;
@@ -35,51 +36,18 @@ const onlineUsers: Map<string, OnlineUser> = new Map();
 let tribeMessages: ChatMessage[] = [];
 let aiMessages: Map<string, ChatMessage[]> = new Map(); // keyed by nickname
 
-// Seed mock Astro Events
-const astroEvents: AstroEvent[] = [
-  {
-    id: "eclipse-2026",
-    title: "Total Solar Eclipse 2026",
-    description: "The magnificent Total Solar Eclipse of August 12, 2026. This eclipse will path over Spain, Iceland, and Greenland, offering a celestial spectacle as the Moon completely covers the Sun.",
-    date: "2026-08-12",
-    type: "eclipse",
-    rarity: "legendary",
-    imagePlaceholder: "eclipse_2026_preview",
-    comments: [
-      { id: "c1", author: "CosmicStargazer", text: "Planning a trip to northern Spain for this!", timestamp: "2026-07-10T05:00:00Z" }
-    ]
-  },
-  {
-    id: "perseids-2026",
-    title: "Perseids Meteor Shower Peak",
-    description: "The annual Perseids Meteor Shower peaks mid-August, producing up to 100 brilliant meteors per hour under dark skies. Ideal visibility occurs in the pre-dawn hours.",
-    date: "2026-08-12",
-    type: "meteor-shower",
-    rarity: "rare",
-    imagePlaceholder: "perseids_meteor_preview",
-    comments: []
-  },
-  {
-    id: "iss-lunar-transit",
-    title: "ISS Lunar Transit",
-    description: "A rare alignment where the International Space Station transits directly in front of the illuminated Moon. Visible only in a path 5km wide. Watch closely as the silhouette transits in 0.6 seconds!",
-    date: "2026-07-15",
-    type: "transit",
-    rarity: "epic",
-    imagePlaceholder: "iss_moon_transit",
-    comments: []
-  },
-  {
-    id: "supermoon-july",
-    title: "Buck Supermoon",
-    description: "A Supermoon occurring at absolute perigee. The Moon will appear 14% larger and 30% brighter than average, lighting up the entire night sky.",
-    date: "2026-07-21",
-    type: "supermoon",
-    rarity: "uncommon",
-    imagePlaceholder: "supermoon_july",
-    comments: []
-  }
-];
+// Seed mock Astro Events from the shared catalogue
+const astroEvents: AstroEvent[] = JSON.parse(JSON.stringify(astroCatalogue));
+// Seed comments for highlights
+const mainEclipse = astroEvents.find(e => e.id === "eclipse-aug-2026" || e.id === "eclipse-2026");
+if (mainEclipse) {
+  mainEclipse.comments.push({
+    id: "c1",
+    author: "CosmicStargazer",
+    text: "Planning a trip to northern Spain for this!",
+    timestamp: "2026-07-10T05:00:00Z"
+  });
+}
 
 // Seed mock Challenges
 const challenges: Challenge[] = [

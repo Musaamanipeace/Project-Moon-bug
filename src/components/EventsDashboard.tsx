@@ -12,6 +12,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline }: EventsD
   const [activeTab, setActiveTab] = useState<"events" | "challenges">("events");
   const [events, setEvents] = useState<AstroEvent[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Detailed modal view
   const [selectedItem, setSelectedItem] = useState<{ type: "event" | "challenge"; data: any } | null>(null);
@@ -130,13 +131,31 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline }: EventsD
     return badges[rarity] || badges.common;
   };
 
+  const filteredEvents = events.filter(ev => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return ev.title.toLowerCase().includes(q) ||
+           ev.description.toLowerCase().includes(q) ||
+           ev.type.toLowerCase().includes(q) ||
+           ev.rarity.toLowerCase().includes(q) ||
+           ev.date.includes(q);
+  });
+
+  const filteredChallenges = challenges.filter(ch => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return ch.title.toLowerCase().includes(q) ||
+           ch.description.toLowerCase().includes(q) ||
+           ch.goal.toLowerCase().includes(q);
+  });
+
   return (
     <div className="space-y-6 p-4 max-w-6xl mx-auto text-slate-200">
       
       {/* Tabs selector */}
       <div className="flex border-b border-slate-800 p-2 gap-2 bg-slate-900/40 backdrop-blur-md rounded-2xl max-w-md mx-auto">
         <button
-          onClick={() => setActiveTab("events")}
+          onClick={() => { setActiveTab("events"); setSearchQuery(""); }}
           className={`flex-1 py-2 rounded-xl text-xs font-bold font-mono transition-all duration-300 focus:outline-none ${
             activeTab === "events"
               ? "bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 shadow"
@@ -146,7 +165,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline }: EventsD
           🌌 Astro Registry Forum
         </button>
         <button
-          onClick={() => setActiveTab("challenges")}
+          onClick={() => { setActiveTab("challenges"); setSearchQuery(""); }}
           className={`flex-1 py-2 rounded-xl text-xs font-bold font-mono transition-all duration-300 focus:outline-none ${
             activeTab === "challenges"
               ? "bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 shadow"
@@ -157,10 +176,29 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline }: EventsD
         </button>
       </div>
 
+      {/* Search Bar Block */}
+      <div className="max-w-md mx-auto relative group">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={activeTab === "events" ? "🔍 Search all 2026 events offline..." : "🔍 Search community challenges..."}
+          className="w-full p-2.5 rounded-xl border border-slate-800 bg-slate-950/80 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-yellow-500/50 font-mono transition-all shadow-inner focus:ring-1 focus:ring-yellow-500/30"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-400 hover:text-slate-200"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {/* RENDER TAB 1: ASTRO EVENTS */}
       {activeTab === "events" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {events.map((ev) => {
+          {filteredEvents.map((ev) => {
             const isHovered = hoveredId === ev.id;
             return (
               <div
@@ -210,7 +248,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline }: EventsD
       {/* RENDER TAB 2: CHALLENGES */}
       {activeTab === "challenges" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {challenges.map((ch) => {
+          {filteredChallenges.map((ch) => {
             const isHovered = hoveredId === ch.id;
             const completed = ch.completedBy.includes(nickname);
             return (

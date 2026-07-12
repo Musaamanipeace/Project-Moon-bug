@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { Sun, Moon, Info, Sparkles, Wifi, WifiOff } from "lucide-react";
+import { Sun, Moon, Info, Sparkles, Wifi, WifiOff, Bug, LogOut } from "lucide-react";
 
 interface HeaderProps {
   activeView: string;
   isOnline: boolean;
   theme: "dark" | "light";
   onThemeToggle: () => void;
+  isLoggedIn: boolean;
+  onLogout: () => void;
+  onLoginClick: () => void;
 }
 
-export default function Header({ activeView, isOnline, theme, onThemeToggle }: HeaderProps) {
+export default function Header({ activeView, isOnline, theme, onThemeToggle, isLoggedIn, onLogout, onLoginClick }: HeaderProps) {
   const [showPopover, setShowPopover] = useState(false);
 
   // Dynamic dashboard text and tooltip description mapping
@@ -52,7 +55,7 @@ export default function Header({ activeView, isOnline, theme, onThemeToggle }: H
       {/* Animated Logo Container */}
       <div className="flex items-center gap-2 cursor-pointer group">
         <div className="relative">
-          <Sparkles className="w-6 h-6 text-yellow-400 group-hover:text-amber-300 transition-colors duration-300 animate-spin-slow" />
+          <Bug className="w-6 h-6 text-rose-500 group-hover:text-rose-400 transition-colors duration-300 animate-pulse" />
           <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
@@ -118,14 +121,25 @@ export default function Header({ activeView, isOnline, theme, onThemeToggle }: H
           )}
         </div>
 
-        {/* Global Theme Toggle */}
-        <button
-          onClick={onThemeToggle}
-          className="p-2 rounded-lg border border-slate-800 bg-slate-900/40 hover:bg-slate-800 hover:text-yellow-400 text-slate-300 transition-all duration-200 focus:outline-none"
-          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
-        >
-          {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
+        {/* Global Login/Logout Toggle */}
+        {isLoggedIn ? (
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-950/10 hover:bg-red-950/30 text-xs font-bold font-mono text-red-400 transition-all uppercase"
+            title="Log Out of your Anonymous Pass"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
+          </button>
+        ) : (
+          <button
+            onClick={onLoginClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 hover:bg-yellow-500/20 text-xs font-bold font-mono text-yellow-400 transition-all uppercase animate-pulse"
+            title="Sign In with Anonymous Pass"
+          >
+            <span>Login</span>
+          </button>
+        )}
       </div>
     </header>
   );
