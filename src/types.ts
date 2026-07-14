@@ -1,110 +1,66 @@
-/**
- * Moonbug Shared Types and Interfaces
- */
-
-export interface Comment {
+export interface User {
   id: string;
-  author: string;
-  text: string;
-  timestamp: string;
+  email: string;
+  displayName: string;
+  authMethod: "otp" | "password";
+  preferredMethod: "otp" | "password";
+  notificationsEnabled: boolean;
+  streak: number;
+  longestStreak: number;
+  createdAt: string;
 }
 
-export interface AstroEvent {
+export interface ChallengeDefinition {
   id: string;
+  slug: string;
   title: string;
   description: string;
-  date: string;
-  type: 'eclipse' | 'transit' | 'meteor-shower' | 'supermoon' | 'alignment';
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-  imagePlaceholder: string;
-  comments: Comment[];
+  prompt: string;
+  moonPhase: string;
+  icon: string;
+  sortOrder: number;
 }
 
-export interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  goal: string;
-  rewardXp: number;
-  date: string;
-  comments: Comment[];
-  completedBy: string[]; // list of user nicknames
-}
-
-export interface JournalEntry {
-  id: string;
-  date: string;
-  content: string;
-  theme: string;
-  mood: string;
-  reminderDate?: string;
-  timestamp: string;
-}
-
-export interface RoutineTask {
-  id: string;
-  name: string;
-  timeFrame: string;
+export interface ChallengeState {
+  challengeId: string;
+  slug: string;
+  logDate: string;
+  data: Record<string, unknown>;
   completed: boolean;
-  recurrence: 'Daily' | 'Weekly' | 'Monthly' | 'Annually';
-  lifespan: 'Permanent' | 'Temporary';
-  expiryDate?: string;
-  lastCompletedTimestamp?: string; // ISO string to check for resets
+  updatedAt: string;
 }
 
-export interface LifeGoal {
-  id: string;
+export interface ChallengeWithState extends ChallengeDefinition {
+  userState: ChallengeState | null;
+}
+
+export interface Badge {
+  challengeId: string;
   title: string;
-  content: string;
+  icon: string;
+  awardedAt: string;
 }
 
-export interface Reminder {
-  id: string;
-  text: string;
-  datetime: string;
-  interval: 'once' | '4x-daily' | 'custom';
-  customHours?: string; // e.g. "08:00,12:00,16:00,20:00"
-  completed: boolean;
+export interface CalendarDay {
+  date: string;
+  day: number;
+  phase: string;
+  phaseCode: string;
+  phaseEmoji: string;
+  illumination: number;
+  completedChallenges: string[] | null;
 }
 
-export interface Idea {
-  id: string;
-  content: string;
-  theme: 'general' | 'high-contrast' | 'dark-mode' | 'light-mode' | 'dyslexia-friendly';
-  timestamp: string;
-}
-
-export interface UserProfile {
-  nickname: string;
-  anonymous: boolean;
-  city: string;
-  hobbies: string[];
-  occupation: string;
-  favorites: {
-    planets: string[];
-    constellations: string[];
-    stars: string[];
-  };
-  favoriteStar: string;
-  projects: string[];
-  xp: number;
-  trophies: string[];
-  birthDate?: string;
-  btcWalletBalance: number;
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: string; // 'AI' or user nickname
-  senderName: string;
-  text: string;
-  timestamp: string;
-  isProactive?: boolean;
-}
-
-export interface OnlineUser {
-  id: string;
-  nickname: string;
-  activePhase: string;
-  lastActive: string;
+export interface ProfileData {
+  user: User;
+  badges: Badge[];
+  streak: number;
+  longestStreak: number;
+  totalCompleted: number;
+  recentActivity: Array<{
+    slug: string;
+    logDate: string;
+    completed: boolean;
+    data: Record<string, unknown>;
+  }>;
 }
