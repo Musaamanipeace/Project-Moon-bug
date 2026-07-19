@@ -5,7 +5,8 @@ import { ArrowRight, Compass, Check, CalendarDays, MoonStar } from "lucide-react
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { SYNODIC_MONTH } from "@/lib/lunar";
-import type { ChallengeWithState } from "@/types";
+import { listEvents } from "@/lib/events";
+import type { ChallengeWithState, MoonEvent } from "@/types";
 import MoonDial from "@/components/MoonDial";
 import LunarCalendar from "@/components/LunarCalendar";
 
@@ -23,6 +24,8 @@ export default function Home() {
   const { user } = useAuth();
   const [lunar, setLunar] = useState<LunarNow | null>(null);
   const [challenges, setChallenges] = useState<ChallengeWithState[]>([]);
+  const [astroEvents, setAstroEvents] = useState<MoonEvent[]>([]);
+  const [astroLoading, setAstroLoading] = useState(true);
 
   useEffect(() => {
     api.get<LunarNow>("/lunar/now").then(setLunar).catch(() => {});
@@ -32,6 +35,15 @@ export default function Home() {
         .then((d) => setChallenges(d.challenges))
         .catch(() => {});
     }
+    listEvents("astronomical")
+      .then((d) => {
+        const sorted = d.events
+          .slice()
+          .sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+        setAstroEvents(sorted.slice(0, 3));
+      })
+      .catch(() => {})
+      .finally(() => setAstroLoading(false));
   }, [user]);
 
   const fraction = lunar ? lunar.age / SYNODIC_MONTH : 0;
@@ -149,6 +161,42 @@ export default function Home() {
           <h2 className="font-display text-2xl font-semibold text-moon">Lunar Calendar</h2>
         </div>
         <LunarCalendar />
+      </section>
+
+      {/* Upcoming astronomical events */}
+      <section className="glass rounded-3xl p-6">
+        <div className="mb-4 flex items-end justify-between">
+          <h2 className="font-display text-2xl font-semibold text-moon">Upcoming astronomical events</h2>
+          <Link
+            to="/events"
+            className="flex items-center gap-1 text-sm text-aurora transition hover:text-moon"
+          >
+            View all events <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {astroLoading ? (
+          <p className="text-sm text-moon-dim">Scanning the sky…</p>
+        ) : astroEvents.length === 0 ? (
+          <p className="text-sm text-moon-dim">No upcoming astronomical events found.</p>
+        ) : (
+          <ul className="space-y-3">
+            {astroEvents.map((ev) => (
+              <li
+                key={ev.id}
+                className="flex items-center justify-between rounded-2xl border border-violet-glow/15 bg-white/[0.02] px-4 py-3"
+              >
+                <div>
+                  <p className="font-display text-sm font-semibold text-moon">{ev.title}</p>
+                  <p className="text-xs text-aurora">{ev.eventDate}</p>
+                </div>
+                <span className="text-xs uppercase tracking-wide text-violet-glow/80">
+                  {ev.rarity}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

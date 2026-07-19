@@ -39,6 +39,10 @@ func Router() *http.ServeMux {
 	mux.Handle("DELETE /api/notebook/{id}", middleware.RequireAuth(deleteNotebookHandler()))
 
 	mux.Handle("GET /api/events", eventsHandler())
+	mux.Handle("POST /api/events", middleware.RequireAuth(createEventHandler()))
+	mux.Handle("GET /api/calendar/events", middleware.RequireAuth(listCalendarEventsHandler()))
+	mux.Handle("POST /api/calendar/events/{id}", middleware.RequireAuth(saveCalendarEventHandler()))
+	mux.Handle("DELETE /api/calendar/events/{id}", middleware.RequireAuth(removeCalendarEventHandler()))
 
 	mux.Handle("GET /api/profile", middleware.RequireAuth(profileHandler()))
 	mux.Handle("GET /api/calendar", middleware.RequireAuth(calendarHandler()))
@@ -795,26 +799,112 @@ func notebookPublic(e store.NotebookEntry) map[string]interface{} {
 
 func eventsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		from := r.URL.Query().Get("from")
-		events, err := store.ListEvents(r.Context(), from)
+		q := r.URL.Query()
+		from := q.Get("from")
+		tier := q.Get("tier")
+		includeCommunity := q.Get("community") == "true"
+		events, err := store.ListEvents(r.Context(), from, tier, includeCommunity)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load events"})
 			return
 		}
 		out := make([]map[string]interface{}, 0, len(events))
 		for _, e := range events {
-			out = append(out, map[string]interface{}{
-				"id":        e.ID,
-				"title":     e.Title,
-				"eventDate": e.EventDate.Format("2006-01-02"),
-				"rarity":    e.Rarity,
-				"synopsis":  e.Synopsis,
-				"category":  e.Category,
-				"source":    e.Source,
-			})
+			out = append(out, eventPublic(e))
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{"events": out})
 	}
+}
+
+func createEventHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Title     string `json:"title"`
+			EventDate string `json:"eventDate"`
+			Rarity    string `json:"rarity"`
+			Synopsis  string `json:"synopsis"`
+			Category  string `json:"category"`
+			Source    string `json:"source"`
+		}
+		if err := readJSON(r, &body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		if body.Title == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "title is required"})
+			return
+		}
+		if body.EventDate == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "eventDate is required"})
+			return
+		}
+		e, err := store.CreateEvent(r.Context(), middleware.UserID(r), body.Title, body.EventDate, body.Rarity, body.Synopsis, body.Category, body.Source)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]interface{}{"event": eventPublic(*e)})
+	}
+}
+
+func listCalendarEventsHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		events, err := store.ListCalendarEvents(r.Context(), middleware.UserID(r))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load calendar events"})
+			return
+		}
+		out := make([]map[string]interface{}, 0, len(events))
+		for _, e := range events {
+			out = append(out, eventPublic(e))
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"events": out})
+	}
+}
+
+func saveCalendarEventHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if err := store.SaveCalendarEvent(r.Context(), middleware.UserID(r), id); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
+func removeCalendarEventHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if err := store.RemoveCalendarEvent(r.Context(), middleware.UserID(r), id); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "event not saved"})
+				return
+			}
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
+func eventPublic(e store.Event) map[string]interface{} {
+	m := map[string]interface{}{
+		"id":        e.ID,
+		"title":     e.Title,
+		"eventDate": e.EventDate.Format("2006-01-02"),
+		"rarity":    e.Rarity,
+		"synopsis":  e.Synopsis,
+		"category":  e.Category,
+		"source":    e.Source,
+		"tier":      e.Tier,
+		"approved":  e.Approved,
+		"authorId":  nil,
+	}
+	if e.AuthorID != nil {
+		m["authorId"] = *e.AuthorID
+	}
+	return m
 }
 
 // ---- helpers ----

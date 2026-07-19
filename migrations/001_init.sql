@@ -66,8 +66,31 @@ CREATE TABLE IF NOT EXISTS badges (
   UNIQUE (user_id, challenge_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_logs_user_date ON challenge_logs(user_id, log_date);
-CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_codes(email, expires_at);
+CREATE TABLE IF NOT EXISTS events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  event_date DATE NOT NULL,
+  rarity TEXT NOT NULL DEFAULT 'common',
+  synopsis TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'astronomical',
+  source TEXT NOT NULL DEFAULT '',
+  tier TEXT NOT NULL DEFAULT 'astronomical' CHECK (tier IN ('astronomical','community')),
+  author_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+  approved BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS user_calendar_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  reminder BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
+CREATE INDEX IF NOT EXISTS idx_user_calendar_events_user ON user_calendar_events(user_id);
 
 -- Seed the five lunar challenges (idempotent).
 INSERT INTO challenges (slug, title, description, prompt, moon_phase, icon, sort_order)

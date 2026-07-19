@@ -39,3 +39,14 @@ Tracks implemented vs. planned capabilities per sprint milestone, as required by
 📋 Future: Moonbug Radio, expanded gaming suite (out of scope)
 
 See .kilo/plans/1784471476639-moonbug-doc-alignment-plan.md for the full phased plan.
+
+## Milestone 2 — Events Catalogue Tier 2 + Personal Calendar (doc §3.C, §6)
+✅ Extended events table with tier (astronomical|community), author_id, approved.
+✅ New user_calendar_events table (save events to personal calendar).
+✅ Backend: POST /api/events (Tier 2 submit, pending approval), GET /api/events?tier=,
+   GET/POST/DELETE /api/calendar/events/{id} (auth). Idempotent ALTER + backfill for dev DBs.
+✅ Frontend: Events submit form + save-to-calendar toggle; Home "Upcoming astronomical events"
+   card deep-linking to /events (doc §6).
+✅ Fix: MoonDial SVG phase rendering (waxing/waning crescent vs gibbous, full/new boundaries).
+
+## Milestone 2 — verified: lint clean, go build OK, go test green, migration runs.

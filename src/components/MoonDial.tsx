@@ -6,24 +6,40 @@ interface MoonDialProps {
   glow?: boolean;
 }
 
-// Builds an SVG path for the lit portion of the moon for a given phase
-// fraction (0 = new, 0.5 = full, 1 = new). Mirrors astronomical illumination.
+// Builds an SVG path for the illuminated portion of the moon.
+// fraction: 0 = new, 0.5 = full, 1 = new. Waxing (0..0.5) lit on the right,
+// waning (0.5..1) lit on the left. Crescent = thin sliver, gibbous = large.
 function litPath(cx: number, cy: number, r: number, fraction: number): string {
   const phase = ((fraction % 1) + 1) % 1;
+
+  const nearlyFull = Math.abs(phase - 0.5) < 1e-3;
+  if (nearlyFull) {
+    return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r} Z`;
+  }
+
   const a = phase * 2 * Math.PI;
-  const x = Math.cos(a) * r;
-  const top = `${cx} ${cy - r}`;
-  const bottom = `${cx} ${cy + r}`;
+  const cosA = Math.cos(a);          // +1 at new, 0 at quarters, -1 at full
+  const rx = Math.abs(cosA) * r;     // terminator semi-width
+  const waxing = phase < 0.5;
 
-  const outer =
-    phase < 0.5
-      ? `A ${r} ${r} 0 0 1 ${bottom}` // right limb lit (waxing)
-      : `A ${r} ${r} 0 0 0 ${bottom}`; // left limb lit (waning)
+  // Outer lit limb: waxing -> right limb (clockwise sweep 1), waning -> left limb (sweep 0)
+  const outerSweep = waxing ? 1 : 0;
 
-  const sweep = phase >= 0.25 && phase < 0.75 ? 0 : 1;
-  const term = `A ${Math.abs(x).toFixed(2)} ${r} 0 0 ${sweep} ${top}`;
+  // Terminator arc (bottom -> top). Crescent bulges toward the dark side,
+  // gibbous bulges toward the lit limb.
+  let termSweep: number;
+  if (waxing) {
+    termSweep = phase < 0.25 ? 0 : 1;   // waxing crescent vs waxing gibbous
+  } else {
+    termSweep = phase < 0.75 ? 1 : 0;   // waning gibbous vs waning crescent
+  }
 
-  return `M ${top} ${outer} ${term} Z`;
+  // Terminator x position: waxing -> right of center, waning -> left of center.
+  const termX = waxing ? cx + rx : cx - rx;
+
+  return `M ${cx} ${cy - r} ` +
+         `A ${r} ${r} 0 0 ${outerSweep} ${cx} ${cy + r} ` +
+         `A ${rx.toFixed(2)} ${r} 0 0 ${termSweep} ${termX.toFixed(2)} ${cy - r} Z`;
 }
 
 export default function MoonDial({ fraction, size = 220, glow = true }: MoonDialProps) {

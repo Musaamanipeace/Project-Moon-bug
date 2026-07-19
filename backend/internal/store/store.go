@@ -614,17 +614,38 @@ type Event struct {
 	Synopsis  string
 	Category  string
 	Source    string
+	Tier      string
+	AuthorID  *string
+	Approved  bool
 }
 
 // ListEvents returns upcoming events at or after the given date (offline catalogue).
-func ListEvents(ctx context.Context, fromDate string) ([]Event, error) {
+// tier filters by catalogue tier: "astronomical" returns only astronomical events,
+// "community" returns only approved community events, and "" returns astronomical
+// events plus any approved community events.
+func ListEvents(ctx context.Context, fromDate, tier string, includeCommunity bool) ([]Event, error) {
 	if fromDate == "" {
 		fromDate = time.Now().UTC().Format("2006-01-02")
 	}
+	var where string
+	var args []interface{}
+	args = append(args, fromDate)
+	switch tier {
+	case "community":
+		where = "tier = 'community' AND approved = TRUE"
+	case "astronomical":
+		where = "tier = 'astronomical'"
+	default:
+		if includeCommunity {
+			where = "(tier = 'astronomical' OR (tier = 'community' AND approved = TRUE))"
+		} else {
+			where = "tier = 'astronomical'"
+		}
+	}
 	rows, err := db.Pool.Query(ctx, `
-		SELECT id, title, event_date, rarity, synopsis, category, source
-		FROM events WHERE event_date >= $1 ORDER BY event_date ASC
-	`, fromDate)
+		SELECT id, title, event_date, rarity, synopsis, category, source, tier, author_id, approved
+		FROM events WHERE event_date >= $1 AND `+where+` ORDER BY event_date ASC
+	`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -632,12 +653,111 @@ func ListEvents(ctx context.Context, fromDate string) ([]Event, error) {
 	out := []Event{}
 	for rows.Next() {
 		var e Event
-		if err := rows.Scan(&e.ID, &e.Title, &e.EventDate, &e.Rarity, &e.Synopsis, &e.Category, &e.Source); err != nil {
+		var author sql.NullString
+		if err := rows.Scan(&e.ID, &e.Title, &e.EventDate, &e.Rarity, &e.Synopsis, &e.Category, &e.Source, &e.Tier, &author, &e.Approved); err != nil {
 			return nil, err
+		}
+		if author.Valid {
+			a := author.String
+			e.AuthorID = &a
 		}
 		out = append(out, e)
 	}
 	return out, nil
+}
+
+// CreateEvent inserts a Tier 2 community event authored by the given user. It is
+// created unapproved and must be moderated before appearing to other users.
+func CreateEvent(ctx context.Context, userID, title, eventDate, rarity, synopsis, category, source string) (*Event, error) {
+	if title == "" {
+		return nil, errors.New("title is required")
+	}
+	t, err := time.Parse("2006-01-02", eventDate)
+	if err != nil {
+		return nil, errors.New("eventDate must be a valid date (YYYY-MM-DD)")
+	}
+	if rarity == "" {
+		rarity = "common"
+	}
+	if category == "" {
+		category = "community"
+	}
+	var e Event
+	var author sql.NullString
+	err = db.Pool.QueryRow(ctx, `
+		INSERT INTO events (title, event_date, rarity, synopsis, category, source, tier, author_id, approved)
+		VALUES ($1,$2,$3,$4,$5,$6,'community',$7,FALSE)
+		RETURNING id, title, event_date, rarity, synopsis, category, source, tier, author_id, approved
+	`, title, t, rarity, synopsis, category, source, userID).Scan(
+		&e.ID, &e.Title, &e.EventDate, &e.Rarity, &e.Synopsis, &e.Category, &e.Source, &e.Tier, &author, &e.Approved)
+	if err != nil {
+		return nil, err
+	}
+	if author.Valid {
+		a := author.String
+		e.AuthorID = &a
+	}
+	return &e, nil
+}
+
+// ListCalendarEvents returns the events a user has saved to their personal calendar,
+// joined with event details, ordered by event date.
+func ListCalendarEvents(ctx context.Context, userID string) ([]Event, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT e.id, e.title, e.event_date, e.rarity, e.synopsis, e.category, e.source, e.tier, e.author_id, e.approved
+		FROM user_calendar_events ce
+		JOIN events e ON e.id = ce.event_id
+		WHERE ce.user_id = $1
+		ORDER BY e.event_date ASC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Event{}
+	for rows.Next() {
+		var e Event
+		var author sql.NullString
+		if err := rows.Scan(&e.ID, &e.Title, &e.EventDate, &e.Rarity, &e.Synopsis, &e.Category, &e.Source, &e.Tier, &author, &e.Approved); err != nil {
+			return nil, err
+		}
+		if author.Valid {
+			a := author.String
+			e.AuthorID = &a
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+// SaveCalendarEvent adds an event to a user's personal calendar (idempotent).
+func SaveCalendarEvent(ctx context.Context, userID, eventID string) error {
+	if _, err := uuid.Parse(eventID); err != nil {
+		return errors.New("invalid event id")
+	}
+	_, err := db.Pool.Exec(ctx, `
+		INSERT INTO user_calendar_events (user_id, event_id)
+		VALUES ($1,$2)
+		ON CONFLICT (user_id, event_id) DO NOTHING
+	`, userID, eventID)
+	return err
+}
+
+// RemoveCalendarEvent removes an event from a user's personal calendar.
+func RemoveCalendarEvent(ctx context.Context, userID, eventID string) error {
+	if _, err := uuid.Parse(eventID); err != nil {
+		return errors.New("invalid event id")
+	}
+	tag, err := db.Pool.Exec(ctx, `
+		DELETE FROM user_calendar_events WHERE user_id = $1 AND event_id = $2
+	`, userID, eventID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func sortTimes(ts []time.Time) {

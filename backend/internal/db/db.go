@@ -122,7 +122,19 @@ CREATE TABLE IF NOT EXISTS events (
   synopsis TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT 'astronomical',
   source TEXT NOT NULL DEFAULT '',
+  tier TEXT NOT NULL DEFAULT 'astronomical' CHECK (tier IN ('astronomical','community')),
+  author_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+  approved BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS user_calendar_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  reminder BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, event_id)
 );
 
 CREATE TABLE IF NOT EXISTS profile_fields (
@@ -176,6 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_logs_user_date ON challenge_logs(user_id, log_dat
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_codes(email, expires_at);
 CREATE INDEX IF NOT EXISTS idx_notebook_user ON notebook_entries(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
+CREATE INDEX IF NOT EXISTS idx_user_calendar_events_user ON user_calendar_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_profile_fields_user ON profile_fields(user_id, parent_id);
 CREATE INDEX IF NOT EXISTS idx_user_assets_user ON user_assets(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id);
@@ -206,6 +219,23 @@ func RunMigrations() error {
 	if _, err := Pool.Exec(ctx, schemaSQL); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
+
+	// Idempotent extension of the events table for Tier 2 + personal calendar.
+	// Safe to re-run on existing dev databases.
+	if _, err := Pool.Exec(ctx, `
+		ALTER TABLE events ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'astronomical' CHECK (tier IN ('astronomical','community'));
+		ALTER TABLE events ADD COLUMN IF NOT EXISTS author_id UUID REFERENCES users(id) ON DELETE SET NULL;
+		ALTER TABLE events ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT FALSE;
+	`); err != nil {
+		return fmt.Errorf("events extension failed: %w", err)
+	}
+	if _, err := Pool.Exec(ctx, `
+		UPDATE events SET tier = 'astronomical' WHERE tier IS NULL;
+		UPDATE events SET approved = TRUE WHERE tier = 'astronomical' AND approved = FALSE;
+	`); err != nil {
+		return fmt.Errorf("events backfill failed: %w", err)
+	}
+
 	for _, c := range seedChallenges {
 		_, err := Pool.Exec(ctx, `
 			INSERT INTO challenges (slug, title, description, prompt, moon_phase, icon, sort_order)
@@ -224,14 +254,14 @@ func RunMigrations() error {
 		// Tier 1 astronomical events (public, well-documented, offline catalogue).
 		// Dates are illustrative annual markers; replace with a curated dataset as needed.
 		_, err = Pool.Exec(ctx, `
-			INSERT INTO events (title, event_date, rarity, synopsis, category, source)
+			INSERT INTO events (title, event_date, rarity, synopsis, category, source, tier, approved)
 			VALUES
-				('Perseid Meteor Shower Peak', '2026-08-12', 'annual', 'Up to 100 meteors per hour as Earth passes through debris from comet 109P/Swift-Tuttle.', 'astronomical', 'NASA'),
-				('Autumn Equinox', '2026-09-22', 'annual', 'The Sun crosses the celestial equator; day and night are nearly equal in length.', 'astronomical', 'IAU'),
-				('Orionid Meteor Shower Peak', '2026-10-21', 'annual', 'Meteors radiate from Orion, left behind by Halley''s Comet.', 'astronomical', 'NASA'),
-				('Winter Solstice', '2026-12-21', 'annual', 'The longest night of the year in the Northern Hemisphere.', 'astronomical', 'IAU'),
-				('Geminid Meteor Shower Peak', '2026-12-14', 'annual', 'One of the richest showers, up to 120 multicolored meteors per hour.', 'astronomical', 'NASA'),
-				('Total Lunar Eclipse', '2026-03-03', 'rare', 'The Full Moon passes fully into Earth''s umbra, glowing copper-red.', 'astronomical', 'NASA')
+				('Perseid Meteor Shower Peak', '2026-08-12', 'annual', 'Up to 100 meteors per hour as Earth passes through debris from comet 109P/Swift-Tuttle.', 'astronomical', 'NASA', 'astronomical', TRUE),
+				('Autumn Equinox', '2026-09-22', 'annual', 'The Sun crosses the celestial equator; day and night are nearly equal in length.', 'astronomical', 'IAU', 'astronomical', TRUE),
+				('Orionid Meteor Shower Peak', '2026-10-21', 'annual', 'Meteors radiate from Orion, left behind by Halley''s Comet.', 'astronomical', 'NASA', 'astronomical', TRUE),
+				('Winter Solstice', '2026-12-21', 'annual', 'The longest night of the year in the Northern Hemisphere.', 'astronomical', 'IAU', 'astronomical', TRUE),
+				('Geminid Meteor Shower Peak', '2026-12-14', 'annual', 'One of the richest showers, up to 120 multicolored meteors per hour.', 'astronomical', 'NASA', 'astronomical', TRUE),
+				('Total Lunar Eclipse', '2026-03-03', 'rare', 'The Full Moon passes fully into Earth''s umbra, glowing copper-red.', 'astronomical', 'NASA', 'astronomical', TRUE)
 			ON CONFLICT DO NOTHING
 		`)
 		if err != nil {

@@ -85,6 +85,8 @@ export interface MoonEvent {
   synopsis: string;
   category: string;
   source: string;
+  tier?: string;
+  approved?: boolean;
 }
 
 export type ProfileFieldType = "text" | "integer" | "multi" | "nested";
