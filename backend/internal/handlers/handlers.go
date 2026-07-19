@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -32,8 +33,13 @@ func Router() *http.ServeMux {
 	mux.Handle("GET /api/challenges/{slug}", middleware.RequireAuth(challengeDetailHandler()))
 	mux.Handle("PUT /api/challenges/{slug}", middleware.RequireAuth(saveChallengeHandler()))
 
-	mux.Handle("GET /api/calendar", calendarHandler())
-	mux.Handle("GET /api/profile", middleware.RequireAuth(profileHandler()))
+	mux.Handle("GET /api/notebook", middleware.RequireAuth(listNotebookHandler()))
+	mux.Handle("POST /api/notebook", middleware.RequireAuth(createNotebookHandler()))
+	mux.Handle("PUT /api/notebook/{id}", middleware.RequireAuth(updateNotebookHandler()))
+	mux.Handle("DELETE /api/notebook/{id}", middleware.RequireAuth(deleteNotebookHandler()))
+
+	mux.Handle("GET /api/events", eventsHandler())
+
 	return mux
 }
 
@@ -447,6 +453,145 @@ func profileHandler() http.HandlerFunc {
 			"totalCompleted":  total,
 			"recentActivity":  actOut,
 		})
+	}
+}
+
+// ---- Notebook handlers ----
+
+func listNotebookHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entries, err := store.ListNotebook(r.Context(), middleware.UserID(r))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load notebook"})
+			return
+		}
+		out := make([]map[string]interface{}, 0, len(entries))
+		for _, e := range entries {
+			out = append(out, notebookPublic(e))
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"entries": out})
+	}
+}
+
+func createNotebookHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			EntryType string  `json:"entryType"`
+			Title     string  `json:"title"`
+			Body      string  `json:"body"`
+			DueDate   *string `json:"dueDate"`
+		}
+		if err := readJSON(r, &body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		var due *time.Time
+		if body.DueDate != nil && *body.DueDate != "" {
+			t, err := time.Parse("2006-01-02", *body.DueDate)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "dueDate must be YYYY-MM-DD"})
+				return
+			}
+			due = &t
+		}
+		e, err := store.CreateNotebook(r.Context(), middleware.UserID(r), body.EntryType, body.Title, body.Body, due)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]interface{}{"entry": notebookPublic(*e)})
+	}
+}
+
+func updateNotebookHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		var body struct {
+			EntryType string  `json:"entryType"`
+			Title     string  `json:"title"`
+			Body      string  `json:"body"`
+			DueDate   *string `json:"dueDate"`
+		}
+		if err := readJSON(r, &body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		var due *time.Time
+		if body.DueDate != nil && *body.DueDate != "" {
+			t, err := time.Parse("2006-01-02", *body.DueDate)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "dueDate must be YYYY-MM-DD"})
+				return
+			}
+			due = &t
+		}
+		e, err := store.UpdateNotebook(r.Context(), middleware.UserID(r), id, body.EntryType, body.Title, body.Body, due)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "entry not found"})
+				return
+			}
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"entry": notebookPublic(*e)})
+	}
+}
+
+func deleteNotebookHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if err := store.DeleteNotebook(r.Context(), middleware.UserID(r), id); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "entry not found"})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not delete entry"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
+func notebookPublic(e store.NotebookEntry) map[string]interface{} {
+	m := map[string]interface{}{
+		"id":         e.ID,
+		"entryType":  e.EntryType,
+		"title":      e.Title,
+		"body":       e.Body,
+		"createdAt":  e.CreatedAt.Format(time.RFC3339),
+		"updatedAt":  e.UpdatedAt.Format(time.RFC3339),
+		"dueDate":    nil,
+	}
+	if e.DueDate != nil {
+		m["dueDate"] = e.DueDate.Format("2006-01-02")
+	}
+	return m
+}
+
+// ---- Events handler ----
+
+func eventsHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		from := r.URL.Query().Get("from")
+		events, err := store.ListEvents(r.Context(), from)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load events"})
+			return
+		}
+		out := make([]map[string]interface{}, 0, len(events))
+		for _, e := range events {
+			out = append(out, map[string]interface{}{
+				"id":        e.ID,
+				"title":     e.Title,
+				"eventDate": e.EventDate.Format("2006-01-02"),
+				"rarity":    e.Rarity,
+				"synopsis":  e.Synopsis,
+				"category":  e.Category,
+				"source":    e.Source,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"events": out})
 	}
 }
 

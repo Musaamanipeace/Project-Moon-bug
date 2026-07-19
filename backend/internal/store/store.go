@@ -425,31 +425,26 @@ func AllStatesForUser(ctx context.Context, userID string) (map[string]*Challenge
 	return best, nil
 }
 
-// ComputeStreaks returns the current and longest consecutive-day streaks.
-func ComputeStreaks(ctx context.Context, userID string) (int, int, error) {
-	dates, err := CompletedDates(ctx, userID)
-	if err != nil {
-		return 0, 0, err
-	}
-	if len(dates) == 0 {
-		return 0, 0, nil
-	}
-	parsed := make([]time.Time, 0, len(dates))
-	for d := range dates {
-		t, e := time.Parse("2006-01-02", d)
-		if e == nil {
-			parsed = append(parsed, t)
-		}
-	}
-	// Build a set of date-only keys.
+// ComputeStreaksFromDates returns the current and longest consecutive-day
+// streaks for a set of completed date keys (YYYY-MM-DD). Pure and testable; the
+// "current" streak counts back from today (or yesterday if today is incomplete).
+func ComputeStreaksFromDates(dateKeys []string) (int, int) {
 	set := map[string]bool{}
-	for _, t := range parsed {
-		set[t.Format("2006-01-02")] = true
+	parsed := make([]time.Time, 0, len(dateKeys))
+	for _, d := range dateKeys {
+		t, err := time.Parse("2006-01-02", d)
+		if err != nil {
+			continue
+		}
+		set[d] = true
+		parsed = append(parsed, t)
 	}
+	if len(parsed) == 0 {
+		return 0, 0
+	}
+	sortTimes(parsed)
 	longest := 1
 	cur := 1
-	// Sort parsed dates.
-	sortTimes(parsed)
 	for i := 1; i < len(parsed); i++ {
 		gap := int(parsed[i].Sub(parsed[i-1]).Hours() / 24)
 		if gap == 1 {
@@ -461,7 +456,6 @@ func ComputeStreaks(ctx context.Context, userID string) (int, int, error) {
 			cur = 1
 		}
 	}
-	// Current streak counts back from today (or yesterday if today not done yet).
 	today := time.Now().UTC().Format("2006-01-02")
 	yesterday := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
 	current := 0
@@ -473,12 +467,177 @@ func ComputeStreaks(ctx context.Context, userID string) (int, int, error) {
 		current++
 		check = parseDate(check).AddDate(0, 0, -1).Format("2006-01-02")
 	}
-	return current, longest, nil
+	return current, longest
+}
+
+// ComputeStreaks returns the current and longest consecutive-day streaks.
+func ComputeStreaks(ctx context.Context, userID string) (int, int, error) {
+	dates, err := CompletedDates(ctx, userID)
+	if err != nil {
+		return 0, 0, err
+	}
+	keys := make([]string, 0, len(dates))
+	for d := range dates {
+		keys = append(keys, d)
+	}
+	cur, longest := ComputeStreaksFromDates(keys)
+	return cur, longest, nil
 }
 
 func parseDate(s string) time.Time {
 	t, _ := time.Parse("2006-01-02", s)
 	return t
+}
+
+// ---- Notebook ----
+
+// NotebookEntry is a single user notebook item (journal, dream, logbook, goal,
+// schedule, or idea).
+type NotebookEntry struct {
+	ID        string
+	UserID    string
+	EntryType string
+	Title     string
+	Body      string
+	DueDate   *time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func validEntryType(t string) bool {
+	switch t {
+	case "journal", "dream", "logbook", "goal", "schedule", "idea":
+		return true
+	}
+	return false
+}
+
+// ListNotebook returns a user's notebook entries ordered newest-first.
+func ListNotebook(ctx context.Context, userID string) ([]NotebookEntry, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, user_id, entry_type, title, body, due_date, created_at, updated_at
+		FROM notebook_entries WHERE user_id = $1 ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []NotebookEntry{}
+	for rows.Next() {
+		var e NotebookEntry
+		var due sql.NullTime
+		if err := rows.Scan(&e.ID, &e.UserID, &e.EntryType, &e.Title, &e.Body, &due, &e.CreatedAt, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if due.Valid {
+			e.DueDate = &due.Time
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+// CreateNotebook inserts a notebook entry.
+func CreateNotebook(ctx context.Context, userID, entryType, title, body string, dueDate *time.Time) (*NotebookEntry, error) {
+	if !validEntryType(entryType) {
+		return nil, errors.New("invalid entry_type")
+	}
+	var e NotebookEntry
+	var due sql.NullTime
+	if dueDate != nil {
+		due = sql.NullTime{Time: *dueDate, Valid: true}
+	}
+	err := db.Pool.QueryRow(ctx, `
+		INSERT INTO notebook_entries (user_id, entry_type, title, body, due_date)
+		VALUES ($1,$2,$3,$4,$5)
+		RETURNING id, user_id, entry_type, title, body, due_date, created_at, updated_at
+	`, userID, entryType, title, body, due).Scan(
+		&e.ID, &e.UserID, &e.EntryType, &e.Title, &e.Body, &due, &e.CreatedAt, &e.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	if due.Valid {
+		e.DueDate = &due.Time
+	}
+	return &e, nil
+}
+
+// UpdateNotebook updates an existing entry owned by the user.
+func UpdateNotebook(ctx context.Context, userID, id, entryType, title, body string, dueDate *time.Time) (*NotebookEntry, error) {
+	if !validEntryType(entryType) {
+		return nil, errors.New("invalid entry_type")
+	}
+	var e NotebookEntry
+	var due sql.NullTime
+	if dueDate != nil {
+		due = sql.NullTime{Time: *dueDate, Valid: true}
+	}
+	err := db.Pool.QueryRow(ctx, `
+		UPDATE notebook_entries
+		SET entry_type = $3, title = $4, body = $5, due_date = $6, updated_at = now()
+		WHERE id = $1 AND user_id = $2
+		RETURNING id, user_id, entry_type, title, body, due_date, created_at, updated_at
+	`, id, userID, entryType, title, body, due).Scan(
+		&e.ID, &e.UserID, &e.EntryType, &e.Title, &e.Body, &due, &e.CreatedAt, &e.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if due.Valid {
+		e.DueDate = &due.Time
+	}
+	return &e, nil
+}
+
+// DeleteNotebook removes an entry owned by the user.
+func DeleteNotebook(ctx context.Context, userID, id string) error {
+	tag, err := db.Pool.Exec(ctx, `DELETE FROM notebook_entries WHERE id = $1 AND user_id = $2`, id, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ---- Events (Tier 1 catalogue, public) ----
+
+// Event is a catalogue entry (astronomical or community).
+type Event struct {
+	ID        string
+	Title     string
+	EventDate time.Time
+	Rarity    string
+	Synopsis  string
+	Category  string
+	Source    string
+}
+
+// ListEvents returns upcoming events at or after the given date (offline catalogue).
+func ListEvents(ctx context.Context, fromDate string) ([]Event, error) {
+	if fromDate == "" {
+		fromDate = time.Now().UTC().Format("2006-01-02")
+	}
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, title, event_date, rarity, synopsis, category, source
+		FROM events WHERE event_date >= $1 ORDER BY event_date ASC
+	`, fromDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Event{}
+	for rows.Next() {
+		var e Event
+		if err := rows.Scan(&e.ID, &e.Title, &e.EventDate, &e.Rarity, &e.Synopsis, &e.Category, &e.Source); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, nil
 }
 
 func sortTimes(ts []time.Time) {

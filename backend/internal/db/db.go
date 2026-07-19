@@ -103,8 +103,32 @@ CREATE TABLE IF NOT EXISTS badges (
   UNIQUE (user_id, challenge_id)
 );
 
+CREATE TABLE IF NOT EXISTS notebook_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  entry_type TEXT NOT NULL CHECK (entry_type IN ('journal','dream','logbook','goal','schedule','idea')),
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  due_date DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  event_date DATE NOT NULL,
+  rarity TEXT NOT NULL DEFAULT 'common',
+  synopsis TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'astronomical',
+  source TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_logs_user_date ON challenge_logs(user_id, log_date);
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_codes(email, expires_at);
+CREATE INDEX IF NOT EXISTS idx_notebook_user ON notebook_entries(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
 `
 
 type seedChallenge struct {
@@ -145,6 +169,22 @@ func RunMigrations() error {
 		`, c.slug, c.title, c.description, c.prompt, c.moonPhase, c.icon, c.sortOrder)
 		if err != nil {
 			return fmt.Errorf("seeding challenge %s failed: %w", c.slug, err)
+		}
+		// Tier 1 astronomical events (public, well-documented, offline catalogue).
+		// Dates are illustrative annual markers; replace with a curated dataset as needed.
+		_, err = Pool.Exec(ctx, `
+			INSERT INTO events (title, event_date, rarity, synopsis, category, source)
+			VALUES
+				('Perseid Meteor Shower Peak', '2026-08-12', 'annual', 'Up to 100 meteors per hour as Earth passes through debris from comet 109P/Swift-Tuttle.', 'astronomical', 'NASA'),
+				('Autumn Equinox', '2026-09-22', 'annual', 'The Sun crosses the celestial equator; day and night are nearly equal in length.', 'astronomical', 'IAU'),
+				('Orionid Meteor Shower Peak', '2026-10-21', 'annual', 'Meteors radiate from Orion, left behind by Halley''s Comet.', 'astronomical', 'NASA'),
+				('Winter Solstice', '2026-12-21', 'annual', 'The longest night of the year in the Northern Hemisphere.', 'astronomical', 'IAU'),
+				('Geminid Meteor Shower Peak', '2026-12-14', 'annual', 'One of the richest showers, up to 120 multicolored meteors per hour.', 'astronomical', 'NASA'),
+				('Total Lunar Eclipse', '2026-03-03', 'rare', 'The Full Moon passes fully into Earth''s umbra, glowing copper-red.', 'astronomical', 'NASA')
+			ON CONFLICT DO NOTHING
+		`)
+		if err != nil {
+			return fmt.Errorf("seeding events failed: %w", err)
 		}
 	}
 	return nil

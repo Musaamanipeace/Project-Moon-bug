@@ -77,7 +77,10 @@ func PhaseCode(age float64) string {
 	}
 }
 
-// Age returns the lunar age (days since last new moon) for a given time.
+// RefNewMoonTime returns the reference new moon as a time.Time.
+func RefNewMoonTime() time.Time {
+	return time.Unix(RefNewMoon, 0).UTC()
+}
 func Age(t time.Time) float64 {
 	secs := float64(t.Unix())
 	days := (secs - float64(RefNewMoon)) / 86400.0

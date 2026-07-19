@@ -8,6 +8,8 @@ import Login from "./pages/Login";
 import Challenges from "./pages/Challenges";
 import ChallengeDetail from "./pages/ChallengeDetail";
 import Profile from "./pages/Profile";
+import Notebook from "./pages/Notebook";
+import Events from "./pages/Events";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -64,6 +66,15 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/notebook"
+              element={
+                <ProtectedRoute>
+                  <Notebook />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/events" element={<Events />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}

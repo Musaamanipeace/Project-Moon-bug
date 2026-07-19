@@ -64,3 +64,25 @@ export interface ProfileData {
     data: Record<string, unknown>;
   }>;
 }
+
+export type NotebookType = "journal" | "dream" | "logbook" | "goal" | "schedule" | "idea";
+
+export interface NotebookEntry {
+  id: string;
+  entryType: NotebookType;
+  title: string;
+  body: string;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MoonEvent {
+  id: string;
+  title: string;
+  eventDate: string;
+  rarity: string;
+  synopsis: string;
+  category: string;
+  source: string;
+}
