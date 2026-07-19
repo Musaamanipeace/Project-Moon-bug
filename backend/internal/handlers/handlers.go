@@ -40,6 +40,9 @@ func Router() *http.ServeMux {
 
 	mux.Handle("GET /api/events", eventsHandler())
 
+	mux.Handle("GET /api/profile", middleware.RequireAuth(profileHandler()))
+	mux.Handle("GET /api/calendar", middleware.RequireAuth(calendarHandler()))
+
 	return mux
 }
 
