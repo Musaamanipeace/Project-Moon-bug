@@ -43,6 +43,9 @@ func Router() *http.ServeMux {
 	mux.Handle("GET /api/profile", middleware.RequireAuth(profileHandler()))
 	mux.Handle("GET /api/calendar", middleware.RequireAuth(calendarHandler()))
 
+	mux.Handle("GET /api/profile/portfolio", middleware.RequireAuth(profilePortfolioHandler()))
+	mux.Handle("PUT /api/profile/portfolio", middleware.RequireAuth(saveProfilePortfolioHandler()))
+
 	return mux
 }
 
@@ -456,6 +459,222 @@ func profileHandler() http.HandlerFunc {
 			"totalCompleted":  total,
 			"recentActivity":  actOut,
 		})
+	}
+}
+
+// ---- Profile Portfolio handlers ----
+
+func profilePortfolioHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		uid := middleware.UserID(r)
+
+		fields, err := store.GetProfileFields(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+		assets, err := store.ListAssets(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+		favorites, err := store.ListFavorites(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+		links, err := store.ListLinks(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+
+		fieldOut := make([]map[string]interface{}, 0, len(fields))
+		for _, f := range fields {
+			fieldOut = append(fieldOut, publicField(f))
+		}
+		assetOut := make([]map[string]interface{}, 0, len(assets))
+		for _, a := range assets {
+			assetOut = append(assetOut, publicAsset(a))
+		}
+		favOut := make([]map[string]interface{}, 0, len(favorites))
+		for _, f := range favorites {
+			favOut = append(favOut, publicFavorite(f))
+		}
+		linkOut := make([]map[string]interface{}, 0, len(links))
+		for _, l := range links {
+			linkOut = append(linkOut, publicLink(l))
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"fields":    fieldOut,
+			"assets":    assetOut,
+			"favorites": favOut,
+			"links":     linkOut,
+		})
+	}
+}
+
+func saveProfilePortfolioHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Fields    []store.ProfileFieldInput `json:"fields"`
+			Assets    []store.UserAssetInput    `json:"assets"`
+			Favorites []store.UserFavoriteInput `json:"favorites"`
+			Links     []store.UserLinkInput     `json:"links"`
+		}
+		if err := readJSON(r, &body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		if body.Fields == nil {
+			body.Fields = []store.ProfileFieldInput{}
+		}
+		if body.Assets == nil {
+			body.Assets = []store.UserAssetInput{}
+		}
+		if body.Favorites == nil {
+			body.Favorites = []store.UserFavoriteInput{}
+		}
+		if body.Links == nil {
+			body.Links = []store.UserLinkInput{}
+		}
+
+		ctx := r.Context()
+		uid := middleware.UserID(r)
+
+		if err := store.UpsertProfileFields(ctx, uid, body.Fields); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not save fields"})
+			return
+		}
+		if err := store.UpsertAssets(ctx, uid, body.Assets); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		if err := store.UpsertFavorites(ctx, uid, body.Favorites); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not save favorites"})
+			return
+		}
+		if err := store.UpsertLinks(ctx, uid, body.Links); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not save links"})
+			return
+		}
+
+		fields, err := store.GetProfileFields(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+		assets, err := store.ListAssets(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+		favorites, err := store.ListFavorites(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+		links, err := store.ListLinks(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load portfolio"})
+			return
+		}
+
+		fieldOut := make([]map[string]interface{}, 0, len(fields))
+		for _, f := range fields {
+			fieldOut = append(fieldOut, publicField(f))
+		}
+		assetOut := make([]map[string]interface{}, 0, len(assets))
+		for _, a := range assets {
+			assetOut = append(assetOut, publicAsset(a))
+		}
+		favOut := make([]map[string]interface{}, 0, len(favorites))
+		for _, f := range favorites {
+			favOut = append(favOut, publicFavorite(f))
+		}
+		linkOut := make([]map[string]interface{}, 0, len(links))
+		for _, l := range links {
+			linkOut = append(linkOut, publicLink(l))
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"fields":    fieldOut,
+			"assets":    assetOut,
+			"favorites": favOut,
+			"links":     linkOut,
+		})
+	}
+}
+
+func publicField(f store.ProfileField) map[string]interface{} {
+	m := map[string]interface{}{
+		"id":        f.ID,
+		"parentId":  nil,
+		"title":     f.Title,
+		"valueText": f.ValueText,
+		"valueInt":  nil,
+		"valueJson": f.ValueJSON,
+		"fieldType": f.FieldType,
+		"sortOrder": f.SortOrder,
+		"createdAt": f.CreatedAt.Format(time.RFC3339),
+		"updatedAt": f.UpdatedAt.Format(time.RFC3339),
+		"children":  []map[string]interface{}{},
+	}
+	if f.ParentID != nil {
+		m["parentId"] = *f.ParentID
+	}
+	if f.ValueInt != nil {
+		m["valueInt"] = *f.ValueInt
+	}
+	if len(f.Children) > 0 {
+		children := make([]map[string]interface{}, 0, len(f.Children))
+		for _, c := range f.Children {
+			children = append(children, publicField(c))
+		}
+		m["children"] = children
+	}
+	return m
+}
+
+func publicAsset(a store.UserAsset) map[string]interface{} {
+	detail := a.Detail
+	if len(detail) == 0 {
+		detail = json.RawMessage("{}")
+	}
+	return map[string]interface{}{
+		"id":        a.ID,
+		"kind":      a.Kind,
+		"title":     a.Title,
+		"detail":    detail,
+		"sortOrder": a.SortOrder,
+		"createdAt": a.CreatedAt.Format(time.RFC3339),
+		"updatedAt": a.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func publicFavorite(f store.UserFavorite) map[string]interface{} {
+	return map[string]interface{}{
+		"id":        f.ID,
+		"kind":      f.Kind,
+		"label":     f.Label,
+		"value":     f.Value,
+		"sortOrder": f.SortOrder,
+		"createdAt": f.CreatedAt.Format(time.RFC3339),
+		"updatedAt": f.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func publicLink(l store.UserLink) map[string]interface{} {
+	return map[string]interface{}{
+		"id":         l.ID,
+		"url":        l.URL,
+		"label":      l.Label,
+		"isLinktree": l.IsLinktree,
+		"sortOrder":  l.SortOrder,
+		"createdAt":  l.CreatedAt.Format(time.RFC3339),
+		"updatedAt":  l.UpdatedAt.Format(time.RFC3339),
 	}
 }
 

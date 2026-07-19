@@ -18,8 +18,8 @@ const goEnv = {
   STATIC_DIR: process.env.STATIC_DIR || path.join(root, "dist"),
 };
 
-const go = spawn("go", ["run", "./backend"], {
-  cwd: root,
+const go = spawn("go", ["run", "."], {
+  cwd: path.join(root, "backend"),
   env: goEnv,
   stdio: ["ignore", "pipe", "pipe"],
 });

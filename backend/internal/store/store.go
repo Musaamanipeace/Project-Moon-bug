@@ -647,3 +647,360 @@ func sortTimes(ts []time.Time) {
 		}
 	}
 }
+
+// ---- Profile Portfolio ----
+
+// ProfileField is a single field in a user's profile portfolio. It may be
+// nested under another field via ParentID.
+type ProfileField struct {
+	ID        string
+	UserID    string
+	ParentID  *string
+	Title     string
+	ValueText string
+	ValueInt  *int
+	ValueJSON json.RawMessage
+	FieldType string
+	SortOrder int
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Children  []ProfileField
+}
+
+// ProfileFieldInput is the payload used to (re)build a user's profile fields.
+type ProfileFieldInput struct {
+	Title     string           `json:"title"`
+	ValueText string           `json:"valueText"`
+	ValueInt  *int             `json:"valueInt"`
+	ValueJSON json.RawMessage  `json:"valueJson"`
+	FieldType string           `json:"fieldType"`
+	SortOrder int              `json:"sortOrder"`
+	Children  []ProfileFieldInput `json:"children"`
+}
+
+// UserAsset is a single user asset (car, bicycle, pets, jewelry, clothing).
+type UserAsset struct {
+	ID        string
+	UserID    string
+	Kind      string
+	Title     string
+	Detail    json.RawMessage
+	SortOrder int
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// UserAssetInput is the payload used to (re)build a user's assets.
+type UserAssetInput struct {
+	Kind      string          `json:"kind"`
+	Title     string          `json:"title"`
+	Detail    json.RawMessage `json:"detail"`
+	SortOrder int             `json:"sortOrder"`
+}
+
+// UserFavorite is a single user favorite entry.
+type UserFavorite struct {
+	ID        string
+	UserID    string
+	Kind      string
+	Label     string
+	Value     string
+	SortOrder int
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// UserFavoriteInput is the payload used to (re)build a user's favorites.
+type UserFavoriteInput struct {
+	Kind      string `json:"kind"`
+	Label     string `json:"label"`
+	Value     string `json:"value"`
+	SortOrder int    `json:"sortOrder"`
+}
+
+// UserLink is a single user link.
+type UserLink struct {
+	ID         string
+	UserID     string
+	URL        string
+	Label      string
+	IsLinktree bool
+	SortOrder  int
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+// UserLinkInput is the payload used to (re)build a user's links.
+type UserLinkInput struct {
+	URL        string `json:"url"`
+	Label      string `json:"label"`
+	IsLinktree bool   `json:"isLinktree"`
+	SortOrder  int    `json:"sortOrder"`
+}
+
+func validAssetKind(k string) bool {
+	switch k {
+	case "car", "bicycle", "pets", "jewelry", "clothing":
+		return true
+	}
+	return false
+}
+
+// GetProfileFields returns the user's profile fields assembled into a tree,
+// ordered by sort_order at every level.
+func GetProfileFields(ctx context.Context, userID string) ([]ProfileField, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, user_id, parent_id, title, value_text, value_int, value_json, field_type, sort_order, created_at, updated_at
+		FROM profile_fields WHERE user_id = $1 ORDER BY sort_order, created_at
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	all := map[string]*ProfileField{}
+	var roots []string
+	byParent := map[string][]string{}
+
+	for rows.Next() {
+		var f ProfileField
+		var parent sql.NullString
+		var vi sql.NullInt64
+		var vj []byte
+		if err := rows.Scan(&f.ID, &f.UserID, &parent, &f.Title, &f.ValueText, &vi, &vj, &f.FieldType, &f.SortOrder, &f.CreatedAt, &f.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if parent.Valid {
+			p := parent.String
+			f.ParentID = &p
+		}
+		if vi.Valid {
+			v := int(vi.Int64)
+			f.ValueInt = &v
+		}
+		if len(vj) > 0 {
+			f.ValueJSON = vj
+		} else {
+			f.ValueJSON = json.RawMessage("[]")
+		}
+		all[f.ID] = &f
+		if f.ParentID != nil {
+			byParent[*f.ParentID] = append(byParent[*f.ParentID], f.ID)
+		} else {
+			roots = append(roots, f.ID)
+		}
+	}
+
+	out := make([]ProfileField, 0, len(roots))
+	for _, rid := range roots {
+		out = append(out, *attachChildren(all[rid], all, byParent))
+	}
+	return out, nil
+}
+
+func attachChildren(f *ProfileField, all map[string]*ProfileField, byParent map[string][]string) *ProfileField {
+	children := byParent[f.ID]
+	f.Children = make([]ProfileField, 0, len(children))
+	for _, cid := range children {
+		child := attachChildren(all[cid], all, byParent)
+		f.Children = append(f.Children, *child)
+	}
+	return f
+}
+
+// UpsertProfileFields replaces a user's profile fields with the provided tree,
+// preserving nesting via parent_id. Runs inside a single transaction.
+func UpsertProfileFields(ctx context.Context, userID string, fields []ProfileFieldInput) error {
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM profile_fields WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	if err := insertProfileFields(ctx, tx, userID, fields, nil); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func insertProfileFields(ctx context.Context, tx pgx.Tx, userID string, fields []ProfileFieldInput, parentID *string) error {
+	for _, f := range fields {
+		ft := f.FieldType
+		if ft == "" {
+			ft = "text"
+		}
+		vj := f.ValueJSON
+		if len(vj) == 0 {
+			vj = json.RawMessage("[]")
+		}
+		id := uuid.NewString()
+		var vi sql.NullInt64
+		if f.ValueInt != nil {
+			vi = sql.NullInt64{Int64: int64(*f.ValueInt), Valid: true}
+		}
+		var pid interface{}
+		if parentID != nil {
+			pid = *parentID
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO profile_fields (id, user_id, parent_id, title, value_text, value_int, value_json, field_type, sort_order)
+			VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)
+		`, id, userID, pid, f.Title, f.ValueText, vi, string(vj), ft, f.SortOrder); err != nil {
+			return err
+		}
+		if len(f.Children) > 0 {
+			if err := insertProfileFields(ctx, tx, userID, f.Children, &id); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ListAssets returns a user's assets ordered by sort_order.
+func ListAssets(ctx context.Context, userID string) ([]UserAsset, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, user_id, kind, title, detail, sort_order, created_at, updated_at
+		FROM user_assets WHERE user_id = $1 ORDER BY sort_order, created_at
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []UserAsset{}
+	for rows.Next() {
+		var a UserAsset
+		var d []byte
+		if err := rows.Scan(&a.ID, &a.UserID, &a.Kind, &a.Title, &d, &a.SortOrder, &a.CreatedAt, &a.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if len(d) > 0 {
+			a.Detail = d
+		} else {
+			a.Detail = json.RawMessage("{}")
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+// UpsertAssets replaces a user's assets with the provided list, validating the
+// kind against the table CHECK set. Runs inside a single transaction.
+func UpsertAssets(ctx context.Context, userID string, assets []UserAssetInput) error {
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM user_assets WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	for _, a := range assets {
+		if !validAssetKind(a.Kind) {
+			return errors.New("invalid asset kind")
+		}
+		d := a.Detail
+		if len(d) == 0 {
+			d = json.RawMessage("{}")
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO user_assets (id, user_id, kind, title, detail, sort_order)
+			VALUES ($1,$2,$3,$4,$5::jsonb,$6)
+		`, uuid.NewString(), userID, a.Kind, a.Title, string(d), a.SortOrder); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// ListFavorites returns a user's favorites ordered by sort_order.
+func ListFavorites(ctx context.Context, userID string) ([]UserFavorite, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, user_id, kind, label, value, sort_order, created_at, updated_at
+		FROM user_favorites WHERE user_id = $1 ORDER BY sort_order, created_at
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []UserFavorite{}
+	for rows.Next() {
+		var f UserFavorite
+		if err := rows.Scan(&f.ID, &f.UserID, &f.Kind, &f.Label, &f.Value, &f.SortOrder, &f.CreatedAt, &f.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, nil
+}
+
+// UpsertFavorites replaces a user's favorites with the provided list. Runs
+// inside a single transaction.
+func UpsertFavorites(ctx context.Context, userID string, favorites []UserFavoriteInput) error {
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM user_favorites WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	for _, f := range favorites {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO user_favorites (id, user_id, kind, label, value, sort_order)
+			VALUES ($1,$2,$3,$4,$5,$6)
+		`, uuid.NewString(), userID, f.Kind, f.Label, f.Value, f.SortOrder); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// ListLinks returns a user's links ordered by sort_order.
+func ListLinks(ctx context.Context, userID string) ([]UserLink, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, user_id, url, label, is_linktree, sort_order, created_at, updated_at
+		FROM user_links WHERE user_id = $1 ORDER BY sort_order, created_at
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []UserLink{}
+	for rows.Next() {
+		var l UserLink
+		if err := rows.Scan(&l.ID, &l.UserID, &l.URL, &l.Label, &l.IsLinktree, &l.SortOrder, &l.CreatedAt, &l.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, l)
+	}
+	return out, nil
+}
+
+// UpsertLinks replaces a user's links with the provided list. Runs inside a
+// single transaction.
+func UpsertLinks(ctx context.Context, userID string, links []UserLinkInput) error {
+	tx, err := db.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM user_links WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	for _, l := range links {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO user_links (id, user_id, url, label, is_linktree, sort_order)
+			VALUES ($1,$2,$3,$4,$5,$6)
+		`, uuid.NewString(), userID, l.URL, l.Label, l.IsLinktree, l.SortOrder); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}

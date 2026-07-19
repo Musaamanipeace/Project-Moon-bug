@@ -86,3 +86,50 @@ export interface MoonEvent {
   category: string;
   source: string;
 }
+
+export type ProfileFieldType = "text" | "integer" | "multi" | "nested";
+
+export interface ProfileField {
+  id: string;
+  parentId: string | null;
+  title: string;
+  valueText: string;
+  valueInt: number | null;
+  valueJson: unknown[];
+  fieldType: ProfileFieldType;
+  sortOrder: number;
+  children?: ProfileField[];
+}
+
+export type UserAssetKind = "car" | "bicycle" | "pets" | "jewelry" | "clothing";
+
+export interface UserAsset {
+  id: string;
+  kind: UserAssetKind;
+  title: string;
+  detail: unknown;
+  sortOrder: number;
+}
+
+export interface UserFavorite {
+  id: string;
+  kind: string;
+  label: string;
+  value: string;
+  sortOrder: number;
+}
+
+export interface UserLink {
+  id: string;
+  url: string;
+  label: string;
+  isLinktree: boolean;
+  sortOrder: number;
+}
+
+export interface PortfolioData {
+  fields: ProfileField[];
+  assets: UserAsset[];
+  favorites: UserFavorite[];
+  links: UserLink[];
+}
