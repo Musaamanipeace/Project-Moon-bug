@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,6 +14,7 @@ import (
 	"moonbug/internal/auth"
 	"moonbug/internal/lunar"
 	"moonbug/internal/middleware"
+	"moonbug/internal/payout"
 	"moonbug/internal/store"
 )
 
@@ -49,6 +52,14 @@ func Router() *http.ServeMux {
 
 	mux.Handle("GET /api/profile/portfolio", middleware.RequireAuth(profilePortfolioHandler()))
 	mux.Handle("PUT /api/profile/portfolio", middleware.RequireAuth(saveProfilePortfolioHandler()))
+
+	// Advertisers, Watchers & direct crypto payouts
+	mux.Handle("GET /api/ads", adsListHandler())
+	mux.Handle("GET /api/ads/{id}", adDetailHandler())
+	mux.Handle("POST /api/ads/{id}/complete", middleware.RequireAuth(adCompleteHandler()))
+	mux.Handle("GET /api/public-key", publicKeyHandler())
+	mux.Handle("GET /api/profile/wallet", middleware.RequireAuth(listWalletHandler()))
+	mux.Handle("PUT /api/profile/wallet", middleware.RequireAuth(upsertWalletHandler()))
 
 	return mux
 }
@@ -905,6 +916,193 @@ func eventPublic(e store.Event) map[string]interface{} {
 		m["authorId"] = *e.AuthorID
 	}
 	return m
+}
+
+// ---- Advertisers, Watchers & crypto payouts ----
+
+func adsListHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		includeNSFW := r.URL.Query().Get("nsfw") == "1"
+		campaigns, err := store.ListActiveCampaigns(r.Context(), includeNSFW, nil)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load ads"})
+			return
+		}
+		out := make([]map[string]interface{}, 0, len(campaigns))
+		for _, c := range campaigns {
+			out = append(out, adPublic(c))
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"campaigns": out})
+	}
+}
+
+func adDetailHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		c, err := store.GetCampaign(r.Context(), id)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "campaign not found"})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load campaign"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"campaign": adPublicFull(*c)})
+	}
+}
+
+func adCompleteHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		ctx := r.Context()
+		uid := middleware.UserID(r)
+
+		c, err := store.GetCampaign(ctx, id)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "campaign not found"})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load campaign"})
+			return
+		}
+		if c.Status != "active" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "campaign is not active"})
+			return
+		}
+
+		var body struct {
+			Nonce *string `json:"nonce"`
+		}
+		if r.Body != nil && r.ContentLength != 0 {
+			if err := readJSON(r, &body); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+				return
+			}
+		}
+		nonce := ""
+		if body.Nonce != nil {
+			nonce = strings.TrimSpace(*body.Nonce)
+		}
+		if nonce == "" {
+			buf := make([]byte, 16)
+			if _, err := rand.Read(buf); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not generate nonce"})
+				return
+			}
+			nonce = base64.RawURLEncoding.EncodeToString(buf)
+		}
+
+		issuedAt := time.Now().UTC().Unix()
+		claim := payout.CompletionClaim{
+			UserID:    uid,
+			CampaignID: id,
+			Nonce:     nonce,
+			IssuedAt:  issuedAt,
+		}
+		signature, err := payout.SignCompletion(claim)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not sign completion"})
+			return
+		}
+		if _, err := store.CreateCompletionToken(ctx, uid, id, nonce, signature); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not record completion"})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"ok": true,
+			"token": map[string]interface{}{
+				"campaignId": id,
+				"userId":     uid,
+				"nonce":      nonce,
+				"signature":  signature,
+				"issuedAt":   issuedAt,
+			},
+			"campaign": map[string]interface{}{
+				"id":              c.ID,
+				"title":           c.Title,
+				"rewardPerAction": c.RewardPerAction,
+				"rewardCurrency":  c.RewardCurrency,
+			},
+		})
+	}
+}
+
+func publicKeyHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"publicKey": payout.PublicKeyBase64()})
+	}
+}
+
+func listWalletHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		uid := middleware.UserID(r)
+		wallets, err := store.ListUserWallets(ctx, uid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not load wallets"})
+			return
+		}
+		out := make([]map[string]interface{}, 0, len(wallets))
+		for _, wlt := range wallets {
+			out = append(out, walletPublic(wlt))
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"wallets": out})
+	}
+}
+
+func upsertWalletHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Chain   string `json:"chain"`
+			Address string `json:"address"`
+		}
+		if err := readJSON(r, &body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		wlt, err := store.UpsertWallet(r.Context(), middleware.UserID(r), body.Chain, body.Address)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"wallet": walletPublic(*wlt)})
+	}
+}
+
+func adPublic(c store.AdCampaign) map[string]interface{} {
+	return map[string]interface{}{
+		"id":               c.ID,
+		"advertiserId":     c.AdvertiserID,
+		"format":           c.Format,
+		"title":            c.Title,
+		"payloadUrl":       c.PayloadURL,
+		"rewardPerAction":  c.RewardPerAction,
+		"rewardCurrency":   c.RewardCurrency,
+		"targetCategories": c.TargetCategories,
+		"nsfw":             c.NSFW,
+		"status":           c.Status,
+	}
+}
+
+func adPublicFull(c store.AdCampaign) map[string]interface{} {
+	m := adPublic(c)
+	if c.Survey != nil {
+		m["survey"] = map[string]interface{}{
+			"questions": c.Survey.Questions,
+			"minPayout": c.Survey.MinPayout,
+		}
+	}
+	return m
+}
+
+func walletPublic(w store.UserWallet) map[string]interface{} {
+	return map[string]interface{}{
+		"chain":   w.Chain,
+		"address": w.Address,
+	}
 }
 
 // ---- helpers ----

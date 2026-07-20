@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"moonbug/internal/db"
 )
 
@@ -766,6 +768,279 @@ func sortTimes(ts []time.Time) {
 			ts[j], ts[j-1] = ts[j-1], ts[j]
 		}
 	}
+}
+
+// ---- Advertisers, Watchers & crypto payouts ----
+
+// AdCampaign is an active or inactive advertising campaign.
+type AdCampaign struct {
+	ID               string
+	AdvertiserID     string
+	Format           string
+	Title            string
+	PayloadURL       string
+	RewardPerAction  float64
+	RewardCurrency   string
+	TargetCategories []string
+	NSFW             bool
+	Status           string
+	CreatedAt        time.Time
+	Survey           *Survey
+}
+
+// Survey is the set of questions attached to a survey-format campaign.
+type Survey struct {
+	ID         string
+	CampaignID string
+	Questions  []map[string]interface{}
+	MinPayout  float64
+}
+
+// UserWallet is a user's crypto payout address on a given chain.
+type UserWallet struct {
+	ID        string
+	UserID    string
+	Chain     string
+	Address   string
+	CreatedAt time.Time
+}
+
+// CompletionToken is a Moonbug-signed proof that a user completed an ad action.
+type CompletionToken struct {
+	ID         string
+	UserID     string
+	CampaignID string
+	Nonce      string
+	Signature  string
+	Claimed    bool
+	CreatedAt  time.Time
+}
+
+const adCampaignColumns = `
+	id, advertiser_id, format, title, payload_url,
+	reward_per_action, reward_currency, target_categories, nsfw, status, created_at
+`
+
+func scanCampaign(c *AdCampaign) []interface{} {
+	var cats []byte
+	return []interface{}{
+		&c.ID, &c.AdvertiserID, &c.Format, &c.Title, &c.PayloadURL,
+		&c.RewardPerAction, &c.RewardCurrency, &cats, &c.NSFW, &c.Status, &c.CreatedAt,
+	}
+}
+
+func decodeCampaignCategories(c *AdCampaign, raw []byte) {
+	c.TargetCategories = []string{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &c.TargetCategories)
+	}
+	if c.TargetCategories == nil {
+		c.TargetCategories = []string{}
+	}
+}
+
+// ListActiveCampaigns returns active campaigns, excluding NSFW unless requested.
+// When categories is non-empty the result is further filtered to campaigns whose
+// target_categories overlap at least one of the given categories.
+func ListActiveCampaigns(ctx context.Context, includeNSFW bool, categories []string) ([]AdCampaign, error) {
+	var where strings.Builder
+	args := []interface{}{}
+	where.WriteString("status = 'active'")
+	if !includeNSFW {
+		where.WriteString(" AND nsfw = FALSE")
+	}
+	if len(categories) > 0 {
+		arr := pgtype.Array[string]{Elements: categories, Valid: true}
+		args = append(args, arr)
+		where.WriteString(" AND target_categories ?| $1")
+	}
+	rows, err := db.Pool.Query(ctx, `
+		SELECT `+adCampaignColumns+`
+		FROM ad_campaigns WHERE `+where.String()+`
+		ORDER BY created_at DESC
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []AdCampaign{}
+	for rows.Next() {
+		var c AdCampaign
+		var raw []byte
+		if err := rows.Scan(scanCampaign(&c)[:10]..., &raw); err != nil {
+			return nil, err
+		}
+		decodeCampaignCategories(&c, raw)
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+// GetCampaign returns a single campaign by id, attaching its Survey when the
+// campaign format is 'survey'.
+func GetCampaign(ctx context.Context, id string) (*AdCampaign, error) {
+	var c AdCampaign
+	var raw []byte
+	err := db.Pool.QueryRow(ctx, `
+		SELECT `+adCampaignColumns+`
+		FROM ad_campaigns WHERE id = $1
+	`, id).Scan(scanCampaign(&c)[:10]..., &raw)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	decodeCampaignCategories(&c, raw)
+	if c.Format == "survey" {
+		s, err := getSurvey(ctx, c.ID)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return nil, err
+		}
+		c.Survey = s
+	}
+	return &c, nil
+}
+
+// getSurvey loads the survey (if any) attached to a campaign.
+func getSurvey(ctx context.Context, campaignID string) (*Survey, error) {
+	var s Survey
+	var raw []byte
+	err := db.Pool.QueryRow(ctx, `
+		SELECT id, campaign_id, questions, min_payout
+		FROM surveys WHERE campaign_id = $1
+	`, campaignID).Scan(&s.ID, &s.CampaignID, &raw, &s.MinPayout)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	s.Questions = []map[string]interface{}{}
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &s.Questions)
+	}
+	if s.Questions == nil {
+		s.Questions = []map[string]interface{}{}
+	}
+	return &s, nil
+}
+
+// GetUserWallet returns a user's wallet for a specific chain.
+func GetUserWallet(ctx context.Context, userID, chain string) (*UserWallet, error) {
+	var w UserWallet
+	err := db.Pool.QueryRow(ctx, `
+		SELECT id, user_id, chain, address, created_at
+		FROM user_wallets WHERE user_id = $1 AND chain = $2
+	`, userID, chain).Scan(&w.ID, &w.UserID, &w.Chain, &w.Address, &w.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &w, nil
+}
+
+// UpsertWallet inserts or updates a user's wallet for a given chain.
+func UpsertWallet(ctx context.Context, userID, chain, address string) (*UserWallet, error) {
+	switch chain {
+	case "solana", "evm":
+	default:
+		return nil, errors.New("chain must be 'solana' or 'evm'")
+	}
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return nil, errors.New("address is required")
+	}
+	if chain == "evm" && len(address) < 40 {
+		return nil, errors.New("invalid evm address")
+	}
+	if chain == "solana" && len(address) < 32 {
+		return nil, errors.New("invalid solana address")
+	}
+	var w UserWallet
+	err := db.Pool.QueryRow(ctx, `
+		INSERT INTO user_wallets (id, user_id, chain, address)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (user_id, chain) DO UPDATE SET address = EXCLUDED.address
+		RETURNING id, user_id, chain, address, created_at
+	`, uuid.NewString(), userID, chain, address).Scan(&w.ID, &w.UserID, &w.Chain, &w.Address, &w.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
+// ListUserWallets returns all wallets for a user.
+func ListUserWallets(ctx context.Context, userID string) ([]UserWallet, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, user_id, chain, address, created_at
+		FROM user_wallets WHERE user_id = $1 ORDER BY chain
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []UserWallet{}
+	for rows.Next() {
+		var w UserWallet
+		if err := rows.Scan(&w.ID, &w.UserID, &w.Chain, &w.Address, &w.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, w)
+	}
+	return out, nil
+}
+
+// CreateCompletionToken records a signed completion token. The (user_id,
+// campaign_id, nonce) triple is unique; on conflict nothing is inserted and the
+// existing row is returned.
+func CreateCompletionToken(ctx context.Context, userID, campaignID, nonce, signature string) (*CompletionToken, error) {
+	var t CompletionToken
+	err := db.Pool.QueryRow(ctx, `
+		INSERT INTO completion_tokens (id, user_id, campaign_id, nonce, signature)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (user_id, campaign_id, nonce) DO NOTHING
+		RETURNING id, user_id, campaign_id, nonce, signature, claimed, created_at
+	`, uuid.NewString(), userID, campaignID, nonce, signature).Scan(
+		&t.ID, &t.UserID, &t.CampaignID, &t.Nonce, &t.Signature, &t.Claimed, &t.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Conflict: return the pre-existing token.
+			return getCompletionToken(ctx, userID, campaignID, nonce)
+		}
+		return nil, err
+	}
+	return &t, nil
+}
+
+func getCompletionToken(ctx context.Context, userID, campaignID, nonce string) (*CompletionToken, error) {
+	var t CompletionToken
+	err := db.Pool.QueryRow(ctx, `
+		SELECT id, user_id, campaign_id, nonce, signature, claimed, created_at
+		FROM completion_tokens WHERE user_id = $1 AND campaign_id = $2 AND nonce = $3
+	`, userID, campaignID, nonce).Scan(
+		&t.ID, &t.UserID, &t.CampaignID, &t.Nonce, &t.Signature, &t.Claimed, &t.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &t, nil
+}
+
+// MarkTokenClaimed marks a completion token as claimed by the advertiser.
+func MarkTokenClaimed(ctx context.Context, id string) error {
+	tag, err := db.Pool.Exec(ctx, `UPDATE completion_tokens SET claimed = TRUE WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // ---- Profile Portfolio ----

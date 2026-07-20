@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { Moon, LogOut, Compass, Sparkles, User as UserIcon, BookOpen, Calendar } from "lucide-react";
+import { Moon, LogOut, Compass, Sparkles, User as UserIcon, BookOpen, Calendar, Gift } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
@@ -14,6 +14,7 @@ export default function Header() {
     { to: "/profile", label: "Profile", icon: UserIcon },
     { to: "/notebook", label: "Notebook", icon: BookOpen },
     { to: "/events", label: "Events", icon: Calendar },
+    { to: "/ads", label: "Ads", icon: Gift },
   ];
 
   return (

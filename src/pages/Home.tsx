@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { ArrowRight, Compass, Check, CalendarDays, MoonStar } from "lucide-react";
+import { ArrowRight, Compass, Check, CalendarDays, MoonStar, Gift } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { SYNODIC_MONTH } from "@/lib/lunar";
 import { listEvents } from "@/lib/events";
-import type { ChallengeWithState, MoonEvent } from "@/types";
+import { listAds } from "@/lib/ads";
+import type { ChallengeWithState, MoonEvent, AdCampaign } from "@/types";
 import MoonDial from "@/components/MoonDial";
 import LunarCalendar from "@/components/LunarCalendar";
 
@@ -26,6 +27,7 @@ export default function Home() {
   const [challenges, setChallenges] = useState<ChallengeWithState[]>([]);
   const [astroEvents, setAstroEvents] = useState<MoonEvent[]>([]);
   const [astroLoading, setAstroLoading] = useState(true);
+  const [ads, setAds] = useState<AdCampaign[]>([]);
 
   useEffect(() => {
     api.get<LunarNow>("/lunar/now").then(setLunar).catch(() => {});
@@ -44,6 +46,9 @@ export default function Home() {
       })
       .catch(() => {})
       .finally(() => setAstroLoading(false));
+    listAds(false)
+      .then((d) => setAds(d.campaigns.slice(0, 2)))
+      .catch(() => {});
   }, [user]);
 
   const fraction = lunar ? lunar.age / SYNODIC_MONTH : 0;
@@ -196,6 +201,50 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      {/* Ads & Rewards (doc §6 tailored ad container with direct gateway button) */}
+      <section className="glass rounded-3xl p-6">
+        <div className="mb-4 flex items-end justify-between">
+          <h2 className="flex items-center gap-2 font-display text-2xl font-semibold text-moon">
+            <Gift className="h-5 w-5 text-aurora" /> Ads & Rewards
+          </h2>
+          <Link
+            to="/ads"
+            className="flex items-center gap-1 text-sm text-aurora transition hover:text-moon"
+          >
+            Explore rewards <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {ads.length === 0 ? (
+          <p className="text-sm text-moon-dim">No campaigns available right now.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {ads.map((ad) => (
+              <div
+                key={ad.id}
+                className="flex items-center gap-3 rounded-2xl border border-violet-glow/15 bg-white/[0.02] p-3"
+              >
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-obsidian-soft/60">
+                  {ad.format === "picture" ? (
+                    <img src={ad.payloadUrl} alt={ad.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-violet-glow/70">
+                      <Gift className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-display text-sm font-semibold text-moon">{ad.title}</p>
+                  <p className="text-xs text-aurora">
+                    {ad.rewardPerAction} {ad.rewardCurrency}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>

@@ -10,6 +10,8 @@ import ChallengeDetail from "./pages/ChallengeDetail";
 import Profile from "./pages/Profile";
 import Notebook from "./pages/Notebook";
 import Events from "./pages/Events";
+import Ads from "./pages/Ads";
+import AdDetail from "./pages/AdDetail";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -75,6 +77,8 @@ export default function App() {
               }
             />
             <Route path="/events" element={<Events />} />
+            <Route path="/ads" element={<Ads />} />
+            <Route path="/ads/:id" element={<AdDetail />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}

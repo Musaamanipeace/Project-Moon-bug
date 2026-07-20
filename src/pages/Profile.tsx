@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Flame, CalendarClock, Award, Bell, KeyRound, Mail, Trophy, Plus, Trash2, Save, LayoutGrid } from "lucide-react";
+import { Flame, CalendarClock, Award, Bell, KeyRound, Mail, Trophy, Plus, Trash2, Save, LayoutGrid, Wallet, Copy, Check } from "lucide-react";
 import { api } from "@/lib/api";
 import { getPortfolio, savePortfolio } from "@/lib/portfolio";
 import { useAuth } from "@/context/AuthContext";
+import { listWallets, upsertWallet } from "@/lib/ads";
 import type {
   Badge,
   ChallengeDefinition,
@@ -14,6 +15,7 @@ import type {
   UserAssetKind,
   UserFavorite,
   UserLink,
+  UserWallet,
 } from "@/types";
 
 const ALL_CHALLENGES = [
@@ -46,7 +48,7 @@ const ASSET_GROUPS: { kind: UserAssetKind; title: string; icon: ReactNode }[] = 
   { kind: "clothing", title: "Clothing Collections", icon: "👕" },
 ];
 
-type Tab = "overview" | "portfolio";
+type Tab = "overview" | "portfolio" | "wallets";
 
 function uid(): string {
   return `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -90,6 +92,7 @@ export default function Profile() {
   const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
     { id: "overview", label: "Overview", icon: <UserGroup /> },
     { id: "portfolio", label: "Portfolio", icon: <LayoutGrid className="h-4 w-4" /> },
+    { id: "wallets", label: "Wallets", icon: <Wallet className="h-4 w-4" /> },
   ];
 
   return (
@@ -217,8 +220,10 @@ export default function Profile() {
             </div>
           )}
         </>
-      ) : (
+      ) : tab === "portfolio" ? (
         <PortfolioTab />
+      ) : (
+        <WalletsTab />
       )}
     </div>
   );
@@ -421,8 +426,113 @@ function PortfolioTab() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Fields (recursive tree)                                            */
+/* Crypto Wallets tab                                                  */
 /* ------------------------------------------------------------------ */
+
+function WalletsTab() {
+  const [wallets, setWallets] = useState<UserWallet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [chain, setChain] = useState<"solana" | "evm">("solana");
+  const [address, setAddress] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    listWallets()
+      .then((d) => setWallets(d.wallets))
+      .catch((e) => setError(e instanceof Error ? e.message : "Could not load your wallets."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const submit = async () => {
+    if (!address.trim()) {
+      setError("Please enter a wallet address.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await upsertWallet(chain, address.trim());
+      setWallets((prev) => {
+        const others = prev.filter((w) => w.chain !== res.wallet.chain);
+        return [...others, res.wallet];
+      });
+      setAddress("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save this wallet.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copy = (addr: string) => {
+    navigator.clipboard?.writeText(addr).then(() => {
+      setCopied(addr);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
+  if (loading) return <p className="text-moon-dim">Loading your wallets…</p>;
+
+  return (
+    <div className="glass rounded-3xl p-6">
+      <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-semibold text-moon">
+        <Wallet className="h-5 w-5 text-violet-glow" /> Crypto Wallets
+      </h2>
+      <p className="mb-4 text-sm text-moon-dim">
+        Connect a Solana or EVM address to receive direct crypto payouts from advertisers.
+      </p>
+
+      {error && <p className="mb-3 text-sm text-rose-glow">{error}</p>}
+
+      <div className="space-y-3">
+        {wallets.length === 0 ? (
+          <p className="text-sm text-moon-dim">No wallets added yet.</p>
+        ) : (
+          wallets.map((w) => (
+            <div
+              key={w.chain}
+              className="flex items-center justify-between rounded-xl border border-violet-glow/15 bg-white/[0.02] px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-violet-glow/80">{w.chain}</p>
+                <p className="truncate font-mono text-sm text-moon">{w.address}</p>
+              </div>
+              <button
+                onClick={() => copy(w.address)}
+                className="grid h-8 w-8 place-items-center rounded-full text-moon-dim transition hover:text-aurora"
+                title="Copy address"
+              >
+                {copied === w.address ? <Check className="h-4 w-4 text-aurora" /> : <Copy className="h-4 w-4" />}
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/5 pt-4">
+        <div className="flex gap-1 rounded-full border border-violet-glow/15 bg-obsidian-soft/60 p-1 text-sm">
+          <MethodBtn active={chain === "solana"} onClick={() => setChain("solana")} label="Solana" />
+          <MethodBtn active={chain === "evm"} onClick={() => setChain("evm")} label="EVM" />
+        </div>
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Wallet address"
+          className="flex-1 rounded-lg border border-violet-glow/15 bg-obsidian-soft/60 px-3 py-1.5 text-sm text-moon placeholder:text-moon-dim/60 outline-none focus:ring-1 focus:ring-violet-glow/40"
+        />
+        <button
+          onClick={submit}
+          disabled={saving}
+          className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-glow to-indigo-glow px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-glow/30 transition hover:brightness-110 disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" /> {saving ? "Saving…" : "Add wallet"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function FieldTree({
   fields,

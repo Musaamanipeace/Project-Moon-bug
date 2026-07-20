@@ -1,3 +1,5 @@
+// update after every commit wherever nessesary only when nessesary.
+
 # 🌙 Moonbug
 
 A wellness and lunar-rhythm companion that aligns your intentions, energy, and

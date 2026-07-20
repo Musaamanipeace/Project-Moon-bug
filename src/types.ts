@@ -135,3 +135,40 @@ export interface PortfolioData {
   favorites: UserFavorite[];
   links: UserLink[];
 }
+
+export type AdFormat = "video" | "picture" | "paid_challenge" | "survey";
+
+export interface AdCampaign {
+  id: string;
+  advertiserId: string;
+  format: AdFormat;
+  title: string;
+  payloadUrl: string;
+  rewardPerAction: number;
+  rewardCurrency: string;
+  targetCategories: string[];
+  nsfw: boolean;
+  status: string;
+}
+
+export interface AdSurvey {
+  questions: unknown[];
+  minPayout: number;
+}
+
+export interface AdCampaignDetail extends AdCampaign {
+  survey?: AdSurvey;
+}
+
+export interface UserWallet {
+  chain: "solana" | "evm";
+  address: string;
+}
+
+export interface CompletionToken {
+  campaignId: string;
+  userId: string;
+  nonce: string;
+  signature: string;
+  issuedAt: number;
+}
