@@ -55,7 +55,13 @@ See .kilo/plans/1784471476639-moonbug-doc-alignment-plan.md for the full phased 
    wallet CRUD, NSFW toggle, category filtering.
 ✅ Frontend: Ads feed (Ads.tsx), ad detail (AdDetail.tsx), wallet tab in Profile,
    completion token issuance with signature display.
-✅ Verified: go test green for ads store tests.
+✅ Advertiser onboarding: register, campaign CRUD, survey upsert, completion ledger.
+   Routes: /api/advertiser/register, /api/advertiser/me, /api/advertiser/campaigns,
+   /api/advertiser/campaigns/{id}, /api/advertiser/campaigns/{id}/survey,
+   /api/advertiser/completions, /api/advertiser/completions/{tokenId}/claim.
+✅ Frontend: /advertiser (onboard), /advertiser/campaigns (dashboard + form),
+   /advertiser/completions (claim ledger), nav links when user.isAdvertiser.
+✅ Verified: go test green for advertiser store tests + HTTP route regression.
 
 ## Milestone 4 — Live Chat + Challenge Audit Phase (doc §4)
 ✅ Migration 005_chat.sql + db.go schema: chat_rooms, messages, audit_assignments.

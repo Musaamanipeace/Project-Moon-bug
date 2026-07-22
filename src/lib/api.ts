@@ -1,6 +1,14 @@
 // Thin fetch wrapper. Uses same-origin /api routes (Vite proxies to Go in dev,
 // Go serves the API directly in production) and sends session cookies.
-import type { ChatRoom, ChatMessage, AuditAssignment } from "@/types";
+import type {
+  ChatRoom,
+  ChatMessage,
+  AuditAssignment,
+  Advertiser,
+  AdCampaign,
+  AdCampaignDetail,
+  AdvertiserMe,
+} from "@/types";
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -53,6 +61,76 @@ export interface PostMessageResponse {
 export interface AuditAssignmentsResponse {
   assignments: AuditAssignment[];
 }
+
+export interface AdvertiserMeResponse {
+  advertiser: Advertiser;
+  isAdvertiser: boolean;
+}
+
+export interface AdvertiserCampaignsResponse {
+  campaigns: AdCampaign[];
+}
+
+export interface AdvertiserCampaignResponse {
+  campaign: AdCampaignDetail;
+}
+
+export interface AdvertiserCompletionsResponse {
+  completions: Array<{
+    id: string;
+    userId: string;
+    campaignId: string;
+    nonce: string;
+    signature: string;
+    claimed: boolean;
+    createdAt: string;
+  }>;
+}
+
+export interface RegisterAdvertiserResponse {
+  advertiser: Advertiser;
+}
+
+export const advertiserApi = {
+  register: (name: string) =>
+    api.post<RegisterAdvertiserResponse>(`/advertiser/register`, { name }),
+  me: () => api.get<AdvertiserMeResponse>(`/advertiser/me`),
+  listCampaigns: () => api.get<AdvertiserCampaignsResponse>(`/advertiser/campaigns`),
+  createCampaign: (input: {
+    format: string;
+    title: string;
+    payloadUrl: string;
+    rewardPerAction: number;
+    rewardCurrency: string;
+    targetCategories: string[];
+    nsfw: boolean;
+    status: string;
+  }) => api.post<AdvertiserCampaignResponse>(`/advertiser/campaigns`, input),
+  getCampaign: (id: string) => api.get<AdvertiserCampaignResponse>(`/advertiser/campaigns/${id}`),
+  updateCampaign: (id: string, input: {
+    format: string;
+    title: string;
+    payloadUrl: string;
+    rewardPerAction: number;
+    rewardCurrency: string;
+    targetCategories: string[];
+    nsfw: boolean;
+    status: string;
+  }) => api.put<AdvertiserCampaignResponse>(`/advertiser/campaigns/${id}`, input),
+  deleteCampaign: (id: string) => api.del<{ ok: boolean }>(`/advertiser/campaigns/${id}`),
+  upsertSurvey: (id: string, questions: unknown[], minPayout: number) =>
+    api.post<{
+      survey: {
+        id: string;
+        campaignId: string;
+        questions: unknown[];
+        minPayout: number;
+      };
+    }>(`/advertiser/campaigns/${id}/survey`, { questions, minPayout }),
+  listCompletions: () => api.get<AdvertiserCompletionsResponse>(`/advertiser/completions`),
+  claimToken: (tokenId: string) =>
+    api.post<{ ok: boolean; campaignId: string }>(`/advertiser/completions/${tokenId}/claim`, {}),
+} as const;
 
 export const chatApi = {
   getRoom: (slug: string) => api.get<ChatRoomResponse>(`/challenges/${slug}/chat/room`),

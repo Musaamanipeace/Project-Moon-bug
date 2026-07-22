@@ -12,6 +12,10 @@ import Notebook from "./pages/Notebook";
 import Events from "./pages/Events";
 import Ads from "./pages/Ads";
 import AdDetail from "./pages/AdDetail";
+import AdvertiserOnboard from "./pages/AdvertiserOnboard";
+import AdvertiserDashboard from "./pages/AdvertiserDashboard";
+import AdvertiserCampaignForm from "./pages/AdvertiserCampaignForm";
+import AdvertiserCompletions from "./pages/AdvertiserCompletions";
 import AuditReview from "./pages/AuditReview";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -78,10 +82,43 @@ export default function App() {
               }
             />
             <Route path="/events" element={<Events />} />
-            <Route path="/ads" element={<Ads />} />
-            <Route path="/ads/:id" element={<AdDetail />} />
-            <Route
-              path="/audit/:slug"
+             <Route path="/ads" element={<Ads />} />
+             <Route path="/ads/:id" element={<AdDetail />} />
+             <Route path="/advertiser" element={<AdvertiserOnboard />} />
+             <Route
+               path="/advertiser/campaigns"
+               element={
+                 <ProtectedRoute>
+                   <AdvertiserDashboard />
+                 </ProtectedRoute>
+               }
+             />
+             <Route
+               path="/advertiser/campaigns/new"
+               element={
+                 <ProtectedRoute>
+                   <AdvertiserCampaignForm />
+                 </ProtectedRoute>
+               }
+             />
+             <Route
+               path="/advertiser/campaigns/:id/edit"
+               element={
+                 <ProtectedRoute>
+                   <AdvertiserCampaignForm />
+                 </ProtectedRoute>
+               }
+             />
+             <Route
+               path="/advertiser/completions"
+               element={
+                 <ProtectedRoute>
+                   <AdvertiserCompletions />
+                 </ProtectedRoute>
+               }
+             />
+             <Route
+               path="/audit/:slug"
               element={
                 <ProtectedRoute>
                   <AuditReview />

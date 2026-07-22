@@ -7,6 +7,7 @@ export interface User {
   notificationsEnabled: boolean;
   streak: number;
   longestStreak: number;
+  isAdvertiser?: boolean;
   createdAt: string;
 }
 
@@ -173,6 +174,18 @@ export interface CompletionToken {
   issuedAt: number;
 }
 
+export interface Advertiser {
+  id: string;
+  name: string;
+  verified: boolean;
+  createdAt: string;
+}
+
+export interface AdvertiserMe {
+  advertiser: Advertiser;
+  isAdvertiser: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   userId: string;
@@ -202,4 +215,16 @@ export interface AuditAssignment {
     completed: boolean;
     data: Record<string, unknown>;
   };
+}
+
+export interface Advertiser {
+  id: string;
+  name: string;
+  verified: boolean;
+  createdAt: string;
+}
+
+export interface AdvertiserMe {
+  advertiser: Advertiser;
+  isAdvertiser: boolean;
 }
