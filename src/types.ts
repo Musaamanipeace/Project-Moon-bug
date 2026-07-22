@@ -172,3 +172,34 @@ export interface CompletionToken {
   signature: string;
   issuedAt: number;
 }
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ChatRoom {
+  id: string;
+  challengeId: string;
+  createdAt: string;
+  currentUser: string;
+  currentName: string;
+}
+
+export interface AuditAssignment {
+  id: string;
+  challengeLogId: string;
+  status: string;
+  decidedAt?: string;
+  createdAt: string;
+  slug?: string;
+  log?: {
+    id: string;
+    logDate: string;
+    completed: boolean;
+    data: Record<string, unknown>;
+  };
+}

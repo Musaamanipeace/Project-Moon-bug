@@ -12,6 +12,7 @@ import Notebook from "./pages/Notebook";
 import Events from "./pages/Events";
 import Ads from "./pages/Ads";
 import AdDetail from "./pages/AdDetail";
+import AuditReview from "./pages/AuditReview";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -79,6 +80,14 @@ export default function App() {
             <Route path="/events" element={<Events />} />
             <Route path="/ads" element={<Ads />} />
             <Route path="/ads/:id" element={<AdDetail />} />
+            <Route
+              path="/audit/:slug"
+              element={
+                <ProtectedRoute>
+                  <AuditReview />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}

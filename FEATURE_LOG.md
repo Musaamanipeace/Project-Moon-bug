@@ -31,9 +31,6 @@ Tracks implemented vs. planned capabilities per sprint milestone, as required by
 ---
 
 ## Planned (roadmap, not yet started)
-📋 Phase 2 — Events Catalogue Tier 2 + personal calendar (doc §3.C, §6)
-📋 Phase 3 — Advertisers, Watchers & direct crypto payouts (doc §5, §1 addendum)
-📋 Phase 4 — Live Chat + Challenge Audit Phase (doc §4)
 📋 Phase 5 — Word-Guessing Game (doc §3.D)
 📋 Phase 6 — Moon Dial depth + Support/FAQ/Contact/Terms/Payment/Donate (doc §3.B, §5, §7)
 📋 Future: Moonbug Radio, expanded gaming suite (out of scope)
@@ -50,3 +47,26 @@ See .kilo/plans/1784471476639-moonbug-doc-alignment-plan.md for the full phased 
 ✅ Fix: MoonDial SVG phase rendering (waxing/waning crescent vs gibbous, full/new boundaries).
 
 ## Milestone 2 — verified: lint clean, go build OK, go test green, migration runs.
+
+## Milestone 3 — Advertisers, Watchers & direct crypto payouts (doc §5, §1 addendum)
+✅ Migration 004_ads.sql + db.go schema: advertisers, ad_campaigns, surveys,
+   completion_tokens, user_wallets.
+✅ Backend: Ed25519 signing (internal/payout), GET /api/public-key, ads list/detail/complete,
+   wallet CRUD, NSFW toggle, category filtering.
+✅ Frontend: Ads feed (Ads.tsx), ad detail (AdDetail.tsx), wallet tab in Profile,
+   completion token issuance with signature display.
+✅ Verified: go test green for ads store tests.
+
+## Milestone 4 — Live Chat + Challenge Audit Phase (doc §4)
+✅ Migration 005_chat.sql + db.go schema: chat_rooms, messages, audit_assignments.
+✅ Backend store: chat room/message CRUD, audit assignment CRUD, GetLogByID.
+✅ Backend handlers: GET/POST /api/chat/rooms/{id}/messages,
+   GET /api/challenges/{slug}/chat/room,
+   GET /api/challenges/{slug}/audit/assignments,
+   POST /api/challenges/{slug}/audit/{logId}/decision.
+✅ Frontend: ChallengeChat embedded in ChallengeDetail (polling, auto-scroll, send form),
+   AuditReview page at /audit/:slug with approve/reject actions and inline toasts.
+✅ Tests: chat_audit_test.go covering store-level room/message flow, audit assignment lifecycle,
+   and HTTP route registration.
+📋 Future: actual WebSocket transport (currently REST polling), randomized auditor assignment,
+   challenge audit gating behind "is_long" challenge flag.

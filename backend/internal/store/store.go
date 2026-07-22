@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"moonbug/internal/db"
 )
 
@@ -788,6 +788,32 @@ type AdCampaign struct {
 	Survey           *Survey
 }
 
+// ChatRoom is a discussion room attached to a challenge.
+type ChatRoom struct {
+	ID          string
+	ChallengeID string
+	CreatedAt   time.Time
+}
+
+// Message is a chat message posted by a user in a room.
+type Message struct {
+	ID        string
+	RoomID    string
+	UserID    string
+	Body      string
+	CreatedAt time.Time
+}
+
+// AuditAssignment links a challenge log submission to a peer auditor.
+type AuditAssignment struct {
+	ID             string
+	ChallengeLogID string
+	AuditorID      string
+	Status         string
+	DecidedAt      *time.Time
+	CreatedAt      time.Time
+}
+
 // Survey is the set of questions attached to a survey-format campaign.
 type Survey struct {
 	ID         string
@@ -850,9 +876,16 @@ func ListActiveCampaigns(ctx context.Context, includeNSFW bool, categories []str
 		where.WriteString(" AND nsfw = FALSE")
 	}
 	if len(categories) > 0 {
-		arr := pgtype.Array[string]{Elements: categories, Valid: true}
-		args = append(args, arr)
-		where.WriteString(" AND target_categories ?| $1")
+		where.WriteString(" AND (")
+		for i, cat := range categories {
+			if i > 0 {
+				where.WriteString(" OR ")
+			}
+			n := len(args) + 1
+			where.WriteString(fmt.Sprintf("target_categories ? $%d", n))
+			args = append(args, cat)
+		}
+		where.WriteString(")")
 	}
 	rows, err := db.Pool.Query(ctx, `
 		SELECT `+adCampaignColumns+`
@@ -900,6 +933,143 @@ func GetCampaign(ctx context.Context, id string) (*AdCampaign, error) {
 		c.Survey = s
 	}
 	return &c, nil
+}
+
+// CreateChatRoom creates a group chat room for a challenge.
+func CreateChatRoom(ctx context.Context, challengeID string) (*ChatRoom, error) {
+	var r ChatRoom
+	err := db.Pool.QueryRow(ctx, `
+		INSERT INTO chat_rooms (challenge_id) VALUES ($1)
+		RETURNING id, challenge_id, created_at
+	`, challengeID).Scan(&r.ID, &r.ChallengeID, &r.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// GetChatRoom returns a chat room by id.
+func GetChatRoom(ctx context.Context, id string) (*ChatRoom, error) {
+	var r ChatRoom
+	err := db.Pool.QueryRow(ctx, `
+		SELECT id, challenge_id, created_at FROM chat_rooms WHERE id = $1
+	`, id).Scan(&r.ID, &r.ChallengeID, &r.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &r, nil
+}
+
+// GetChatRoomByChallenge returns the first chat room for a challenge.
+func GetChatRoomByChallenge(ctx context.Context, challengeID string) (*ChatRoom, error) {
+	var r ChatRoom
+	err := db.Pool.QueryRow(ctx, `
+		SELECT id, challenge_id, created_at FROM chat_rooms WHERE challenge_id = $1 LIMIT 1
+	`, challengeID).Scan(&r.ID, &r.ChallengeID, &r.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &r, nil
+}
+
+// ListMessages returns messages for a room ordered by time.
+func ListMessages(ctx context.Context, roomID string) ([]Message, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, room_id, user_id, body, created_at
+		FROM messages WHERE room_id = $1 ORDER BY created_at ASC
+	`, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Message{}
+	for rows.Next() {
+		var m Message
+		if err := rows.Scan(&m.ID, &m.RoomID, &m.UserID, &m.Body, &m.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
+
+// CreateMessage inserts a new chat message.
+func CreateMessage(ctx context.Context, roomID, userID, body string) (*Message, error) {
+	var m Message
+	err := db.Pool.QueryRow(ctx, `
+		INSERT INTO messages (room_id, user_id, body) VALUES ($1, $2, $3)
+		RETURNING id, room_id, user_id, body, created_at
+	`, roomID, userID, body).Scan(&m.ID, &m.RoomID, &m.UserID, &m.Body, &m.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// CreateAuditAssignment creates an audit assignment for a completed challenge log.
+func CreateAuditAssignment(ctx context.Context, challengeLogID, auditorID string) (*AuditAssignment, error) {
+	var a AuditAssignment
+	err := db.Pool.QueryRow(ctx, `
+		INSERT INTO audit_assignments (challenge_log_id, auditor_id, status)
+		VALUES ($1, $2, 'pending')
+		RETURNING id, challenge_log_id, auditor_id, status, decided_at, created_at
+	`, challengeLogID, auditorID).Scan(&a.ID, &a.ChallengeLogID, &a.AuditorID, &a.Status, &a.DecidedAt, &a.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+// GetAuditAssignment returns an assignment by id.
+func GetAuditAssignment(ctx context.Context, id string) (*AuditAssignment, error) {
+	var a AuditAssignment
+	err := db.Pool.QueryRow(ctx, `
+		SELECT id, challenge_log_id, auditor_id, status, decided_at, created_at
+		FROM audit_assignments WHERE id = $1
+	`, id).Scan(&a.ID, &a.ChallengeLogID, &a.AuditorID, &a.Status, &a.DecidedAt, &a.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &a, nil
+}
+
+// UpdateAuditAssignmentStatus updates the status of an audit assignment.
+func UpdateAuditAssignmentStatus(ctx context.Context, id, status string) error {
+	_, err := db.Pool.Exec(ctx, `
+		UPDATE audit_assignments SET status = $1, decided_at = now() WHERE id = $2
+	`, status, id)
+	return err
+}
+
+// ListAuditAssignmentsForAuditor returns pending assignments for an auditor.
+func ListAuditAssignmentsForAuditor(ctx context.Context, auditorID string) ([]AuditAssignment, error) {
+	rows, err := db.Pool.Query(ctx, `
+		SELECT id, challenge_log_id, auditor_id, status, decided_at, created_at
+		FROM audit_assignments WHERE auditor_id = $1 AND status = 'pending'
+		ORDER BY created_at ASC
+	`, auditorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []AuditAssignment{}
+	for rows.Next() {
+		var a AuditAssignment
+		if err := rows.Scan(&a.ID, &a.ChallengeLogID, &a.AuditorID, &a.Status, &a.DecidedAt, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
 }
 
 // getSurvey loads the survey (if any) attached to a campaign.

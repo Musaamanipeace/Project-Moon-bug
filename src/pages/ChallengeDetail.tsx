@@ -9,6 +9,7 @@ import WaxingCrescentFocus from "@/components/challenges/WaxingCrescentFocus";
 import FullMoonRelease from "@/components/challenges/FullMoonRelease";
 import WaningGratitude from "@/components/challenges/WaningGratitude";
 import BalsamicRest from "@/components/challenges/BalsamicRest";
+import ChallengeChat from "@/components/challenges/ChallengeChat";
 
 const MODULES: Record<string, ComponentType<ModuleProps>> = {
   "new-moon-reflection": NewMoonReflection,
@@ -71,6 +72,7 @@ export default function ChallengeDetail() {
         <ArrowLeft className="h-4 w-4" /> All challenges
       </Link>
       {Module && <Module challenge={challenge} state={state} onSave={onSave} />}
+      <ChallengeChat challengeSlug={slug} />
     </div>
   );
 }
