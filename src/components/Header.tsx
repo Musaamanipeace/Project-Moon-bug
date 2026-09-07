@@ -1,77 +1,88 @@
-import { useState } from "react";
-import { Sun, Moon, Info, Sparkles, Wifi, WifiOff, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Sun, Moon, Info, Sparkles, Wifi, WifiOff, LogOut, Bell, User, Settings } from "lucide-react";
+import { supabase } from "../lib/supabase";
+
+import type { ParentTab } from "../App";
 
 interface HeaderProps {
-  activeView: string;
+  activeView: ParentTab;
   isOnline: boolean;
   theme: "dark" | "light";
   onThemeToggle: () => void;
   isLoggedIn: boolean;
   onLogout: () => void;
-  onLoginClick: () => void;
-  onHome: () => void;
+  nickname: string;
+  onNavigateHome?: () => void;
 }
 
-export default function Header({ activeView, isOnline, theme, onThemeToggle, isLoggedIn, onLogout, onLoginClick, onHome }: HeaderProps) {
+export default function Header({ activeView, isOnline, theme, onThemeToggle, isLoggedIn, onLogout, nickname, onNavigateHome }: HeaderProps) {
   const [showPopover, setShowPopover] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [email, setEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpSentMsg, setOtpSentMsg] = useState("");
 
-  // Dynamic dashboard text and tooltip description mapping
-  const dashboardMap: Record<string, { title: string; desc: string; steps: string }> = {
+  const dashboardMap: Record<ParentTab, { title: string; desc: string; steps: string }> = {
     home: {
       title: "Home",
-      desc: "Observe real-time celestial coordinates on our MoonDial and complete active challenges.",
-      steps: "Track your precise Lunar Age, complete onboarding/lifestyle challenges, or log perspectives.",
+      desc: "Observe real-time celestial coordinates on our MoonDial and discover community recommendations.",
+      steps: "Track lunar phases, browse paywall-free resources, or watch nature-conscious ads.",
     },
-    notes: {
-      title: "Notes Workspace",
-      desc: "Tailored journal & workspace for habits, health vitals, astro logs, and life goals.",
-      steps: "Manage 3D Journal entries, Habit Triggers, Vital Checks, Astro Observation Logs, and Life Blueprints.",
+    activities: {
+      title: "Activities",
+      desc: "Complete community challenges, play multiplayer games, connect with your tribe, or manage your notebook.",
+      steps: "Pick a sub-tab from the Activities navigation bar to get started.",
     },
-    profile: {
-      title: "Profile",
-      desc: "Manage your cosmic identity, skills focus portfolio, health conditions catalogue, and feed posts.",
-      steps: "Access Portfolio skills, Health & Disease catalogue, personal feed entries, or level rank.",
+    watchAds: {
+      title: "Watch Ads",
+      desc: "Curated, nature-conscious and public-awareness campaigns from community advertisers.",
+      steps: "Browse the Watch shelf, earn Cheese for viewing, or advertise your own campaign.",
     },
-    calendar: {
-      title: "Calendar",
-      desc: "Review a fixed monthly grid showcasing lunar phases and scheduled MoonDial events.",
-      steps: "Set reminders for sky watcher events or lock goal commencement dates.",
-    },
-    chat: {
-      title: "AI Companion",
-      desc: "Engage in helpful reflection and productive support conversations.",
-      steps: "Talk to moonrise AI or establish live thread with peers.",
-    },
-    events: {
-      title: "Events & Challenges",
-      desc: "Explore detailed astronomy transits, eclipse guides, and community challenges.",
-      steps: "Hover over cards to see details, submit challenge entries, or complete assignments for XP.",
-    },
-    dial: {
-      title: "Lunar Dial",
-      desc: "Observe real-time celestial coordinates on our MoonDial and track lunar rise, zenith, and set times.",
-      steps: "Watch the Moon's path across the sky, toggle Sun or realistic rendering, or set lunar reminders.",
-    },
-    challenges: {
-      title: "Challenges",
-      desc: "Complete onboarding, lifestyle, and skill challenges to earn Cheese XP and level up.",
-      steps: "Pick a challenge track, follow step-by-step tasks, or submit entries for XP rewards.",
-    },
-    advertiser: {
-      title: "Advertiser",
-      desc: "Self-hosted ethical advertisement ecosystem for brands and creators.",
-      steps: "Create sponsored ads, review the ad quiz, or browse the advertiser feed for XP.",
-    },
-    notifications: { title: "Notifications", desc: "Stay updated on events, challenges, and community activity.", steps: "Review astro-event alerts and challenge reminders." },
-    hello: { title: "Hello (Moonrise AI)", desc: "Talk to Moonrise, your benevolent AI companion.", steps: "Ask questions, get guidance, or just say hello." },
   };
 
   const currentContext = dashboardMap[activeView] || dashboardMap.home;
 
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setOtpLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
+      if (error) throw error;
+      setOtpSent(true);
+      setOtpSentMsg(`✓ Magic link sent to ${email}`);
+      setTimeout(() => {
+        setShowProfile(false);
+        setOtpSent(false);
+        setOtpSentMsg("");
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      setOtpSentMsg("Failed to send magic link. Try again.");
+      setTimeout(() => setOtpSentMsg(""), 3000);
+    }
+    setOtpLoading(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".notifications-dropdown") && !target.closest(".bell-btn")) {
+        setShowNotifications(false);
+      }
+      if (!target.closest(".profile-dropdown") && !target.closest(".profile-btn")) {
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [];
+
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-[#0a0b10]/80 dark:bg-[#0a0b10]/80 light:bg-slate-100/90 backdrop-blur-md transition-all duration-300">
-      {/* Animated Logo Container */}
-      <div className="flex items-center gap-2 cursor-pointer group" onClick={onHome} title="Go to Home">
+      <div className="flex items-center gap-2 cursor-pointer group" onClick={onNavigateHome} title="Go to Home">
         <h1 className="text-xl font-bold font-mono tracking-wider text-slate-100 group-hover:text-white transition-colors duration-500 relative flex items-center gap-1">
           <span className="bg-gradient-to-r from-turquoise-200 via-turquoise-300 to-turquoise-500 bg-clip-text text-transparent">
             Project-moonrise
@@ -79,7 +90,6 @@ export default function Header({ activeView, isOnline, theme, onThemeToggle, isL
         </h1>
       </div>
 
-      {/* Center Dynamic Context Button with Hover Popover */}
       <div className="relative">
         <button
           onMouseEnter={() => setShowPopover(true)}
@@ -110,9 +120,7 @@ export default function Header({ activeView, isOnline, theme, onThemeToggle, isL
         )}
       </div>
 
-      {/* Controls & Connection badges */}
       <div className="flex items-center gap-3">
-        {/* Glowing Network Status Badge */}
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-full border border-slate-800 bg-slate-900/40 text-[10px] font-mono">
           {isOnline ? (
             <>
@@ -132,27 +140,90 @@ export default function Header({ activeView, isOnline, theme, onThemeToggle, isL
           )}
         </div>
 
-        {/* Global Login/Logout Toggle */}
-        {isLoggedIn ? (
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-950/10 hover:bg-red-950/30 text-xs font-bold font-mono text-red-400 transition-all uppercase"
-            title="Log Out of your Anonymous Pass"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
-        ) : (
-          <button
-            onClick={onLoginClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-turquoise-500/30 bg-turquoise-500/10 hover:bg-turquoise-500/20 text-xs font-bold font-mono text-turquoise transition-all uppercase animate-pulse"
-            title="Sign In with Anonymous Pass"
-          >
-            <span>Login</span>
-          </button>
+        {isLoggedIn && (
+          <div className="relative flex items-center gap-1">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="bell-btn p-1.5 rounded-lg text-slate-400 hover:text-turquoise hover:bg-slate-800/60 transition-all"
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+            </button>
+
+            {showNotifications && (
+              <div className="notifications-dropdown absolute top-full right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-xl border border-slate-700 bg-[#0c0d16] shadow-2xl backdrop-blur-lg z-50">
+                <div className="p-3 border-b border-slate-800">
+                  <h3 className="text-xs font-mono font-bold text-turquoise uppercase tracking-wider">Notifications</h3>
+                </div>
+                <div className="p-3 space-y-2 text-[10px]">
+                  <div className="p-2 rounded-lg border border-slate-800 bg-slate-900/40">
+                    <span className="text-[9px] font-mono text-slate-400 uppercase block">Welcome</span>
+                    <p className="text-slate-300">Welcome to Project Moonrise, {nickname || "explorer"}.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="profile-btn p-1.5 rounded-lg text-slate-400 hover:text-turquoise hover:bg-slate-800/60 transition-all"
+              title="Profile"
+            >
+              <User className="w-4 h-4" />
+            </button>
+
+            {showProfile && (
+              <div className="profile-dropdown absolute top-full right-0 mt-2 w-64 rounded-xl border border-slate-700 bg-[#0c0d16] shadow-2xl backdrop-blur-lg z-50">
+                <div className="p-3 border-b border-slate-800">
+                  <span className="text-xs font-mono text-slate-300 block">{nickname || "anonymous"}</span>
+                  {otpSentMsg && <span className="text-[9px] font-mono text-turquoise-dim block mt-0.5">{otpSentMsg}</span>}
+                </div>
+
+                {!otpSent ? (
+                  <form onSubmit={handleSendOtp} className="p-3 space-y-2">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-turquoise-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={otpLoading || !email.trim()}
+                      className="w-full py-1.5 rounded-lg bg-turquoise-500 hover:bg-turquoise-400 text-slate-950 font-mono text-[10px] font-bold uppercase transition-all disabled:opacity-50"
+                    >
+                      {otpLoading ? "Sending..." : "Send Magic Link"}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="p-3 text-[9px] font-mono text-slate-300">
+                    Check your email for the magic link.
+                  </div>
+                )}
+
+                <div className="border-t border-slate-800 p-2">
+                  <button
+                    onClick={onLogout}
+                    className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-red-400 hover:bg-red-950/30 font-mono text-xs uppercase transition-all"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
+
+        <button
+          onClick={onThemeToggle}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-turquoise hover:bg-slate-800/60 transition-all"
+          title="Toggle theme"
+        >
+          {theme === "dark" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+        </button>
       </div>
     </header>
   );
 }
-

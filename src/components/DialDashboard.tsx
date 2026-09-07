@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   Moon,
   MapPin,
-  Coins,
   Trophy,
   Sparkles,
   Megaphone,
@@ -12,14 +11,12 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { getLunarStatus, SYNODIC_MONTH } from "../lib/lunar";
-import { AstroEvent, Challenge } from "../types";
+import { AstroEvent } from "../types";
 
 interface DialDashboardProps {
   locationText: string;
   birthDate: string;
   nickname: string;
-  xp: number;
-  onAddXp: (amount: number) => void;
 }
 
 /** Bordered container style used by every panel of the twilight Moondial. */
@@ -74,7 +71,7 @@ function getLitLimbPath(age: number, cx: number, cy: number, r: number): string 
   return `M ${cx} ${cy - r} A ${r} ${r} 0 0 ${outerSweep} ${cx} ${cy + r} A ${termRx} ${r} 0 0 ${termSweep} ${cx} ${cy - r} Z`;
 }
 
-export default function DialDashboard({ locationText, birthDate, nickname, xp, onAddXp }: DialDashboardProps) {
+export default function DialDashboard({ locationText, birthDate, nickname }: DialDashboardProps) {
   // ---- Interactive lunar clock date control ----
   const [activeDateStr, setActiveDateStr] = useState(() => toDateInputValue(new Date()));
   const [hoveringMoon, setHoveringMoon] = useState(false);
@@ -127,15 +124,7 @@ export default function DialDashboard({ locationText, birthDate, nickname, xp, o
     setActiveDateStr(toDateInputValue(next));
   };
 
-  // ---- Essential user stats (level thresholds mirror App) ----
-  const level = xp < 100 ? 1 : xp < 300 ? 2 : xp < 600 ? 3 : 4;
-  const tierFloor = level === 1 ? 0 : level === 2 ? 100 : level === 3 ? 300 : 600;
-  const nextTierAt = level === 1 ? 100 : level === 2 ? 300 : level === 3 ? 600 : null;
-  const tierProgress = nextTierAt
-    ? Math.min(100, Math.max(0, Math.round(((xp - tierFloor) / (nextTierAt - tierFloor)) * 100)))
-    : 100;
-
-  // ---- Lunar clock geometry ----
+  /* ---- Lunar clock geometry ---- */
   const CX = 120;
   const CY = 120;
   const MOON_R = 74;
@@ -193,10 +182,10 @@ export default function DialDashboard({ locationText, birthDate, nickname, xp, o
         </section>
 
         {/* CLOCK + FLANKING PANELS */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-          {/* CENTREPIECE: 3D INTERACTIVE LUNAR CLOCK */}
-          <section className={`${PANEL} p-5 lg:col-span-6 lg:order-2 space-y-4`}>
+           {/* CENTREPIECE: 3D INTERACTIVE LUNAR CLOCK */}
+           <section className={`${PANEL} p-5 lg:col-span-12 lg:order-2 space-y-4`}>
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
               <h3 className="text-[11px] font-bold font-mono text-turquoise uppercase tracking-widest">
                 3D Interactive Lunar Clock
@@ -390,44 +379,7 @@ export default function DialDashboard({ locationText, birthDate, nickname, xp, o
             </p>
           </section>
 
-          {/* LEFT FLANK: ESSENTIAL USER STATS */}
-          <section className={`${PANEL} p-5 lg:col-span-3 lg:order-1 space-y-3`}>
-            <h3 className="text-[11px] font-bold font-mono text-turquoise uppercase tracking-widest border-b border-slate-800/80 pb-2">
-              Essential User Stats
-            </h3>
-
-            <div className="p-3 rounded-xl border border-slate-800 bg-slate-950/40 space-y-1">
-              <span className="text-[9px] font-mono text-slate-500 uppercase flex items-center gap-1.5">
-                <Coins className="w-3 h-3 text-turquoise-dim" />
-                Cheese Balance
-              </span>
-              <span className="text-base font-bold font-mono text-turquoise block">{xp} Cheese</span>
-            </div>
-
-            <div className="p-3 rounded-xl border border-slate-800 bg-slate-950/40 space-y-1.5">
-              <span className="text-[9px] font-mono text-slate-500 uppercase flex items-center gap-1.5">
-                <Trophy className="w-3 h-3 text-turquoise-dim" />
-                Community Rank
-              </span>
-              <span className="text-xs font-bold font-mono text-slate-200 block">Level {level}: Explorer</span>
-              <div className="h-1.5 w-full rounded-full bg-slate-800/80 overflow-hidden">
-                <div className="h-full rounded-full bg-turquoise-500" style={{ width: `${tierProgress}%` }} />
-              </div>
-              <span className="text-[8.5px] font-mono text-slate-500 block">
-                {nextTierAt ? `Next tier at ${nextTierAt} Cheese` : "Top tier reached"}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl border border-slate-800 bg-slate-950/40 space-y-1">
-              <span className="text-[9px] font-mono text-slate-500 uppercase flex items-center gap-1.5">
-                <MapPin className="w-3 h-3 text-turquoise-dim" />
-                Observation Point
-              </span>
-              <span className="text-xs font-bold font-mono text-slate-200 block">{locationText}</span>
-            </div>
-          </section>
-
-          {/* RIGHT FLANK: UPCOMING ASTROLOGICAL / LUNAR EVENTS */}
+           {/* RIGHT FLANK: UPCOMING ASTROLOGICAL / LUNAR EVENTS */}
           <section className={`${PANEL} p-5 lg:col-span-3 lg:order-3 space-y-3`}>
             <h3 className="text-[11px] font-bold font-mono text-turquoise uppercase tracking-widest border-b border-slate-800/80 pb-2 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-turquoise-dim" />
@@ -478,8 +430,8 @@ export default function DialDashboard({ locationText, birthDate, nickname, xp, o
                     className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/40 flex items-center justify-between gap-3"
                   >
                     <h4 className="text-[11px] font-bold text-slate-200 leading-snug">{ch.title}</h4>
-                    <span className="text-[9px] font-mono font-bold text-turquoise shrink-0">
-                      +{ch.rewardXp} XP
+                    <span className="text-[9px] font-mono font-bold text-turquoise-dim shrink-0">
+                      Reward
                     </span>
                   </div>
                 ))}

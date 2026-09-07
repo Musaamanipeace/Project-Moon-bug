@@ -1,26 +1,33 @@
 import React from "react";
-import { Bell, Calendar, FileText, BookOpen, Rss, Clock, Users, UserPlus, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, ChevronLeft, ChevronRight, Award, Gamepad2, Users, FileText, Calendar, Compass, BookOpen } from "lucide-react";
+import type { ParentTab, ActivitiesSubTab } from "../App";
 
 interface SidebarProps {
-  activeView: string;
-  onNavigate: (view: string) => void;
+  activeView: ParentTab;
+  onNavigate: (view: ParentTab) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  activitiesSubTab?: ActivitiesSubTab;
+  onActivitiesSubTabChange?: (tab: ActivitiesSubTab) => void;
 }
 
-const ITEMS = [
-  { id: "notifications", label: "Notifications", icon: Bell, hint: "Alerts, events & challenges" },
-  { id: "calendar", label: "Calendar", icon: Calendar, hint: "Moon phases & events" },
-  { id: "notes", label: "Notebook", icon: FileText, hint: "Daily planner, ideas & projects" },
-  { id: "dial", label: "Moondial", icon: Clock, hint: "Lunar clock & calendar" },
-  { id: "catalogues", label: "Catalogues", icon: BookOpen, hint: "Events, brands, books, ads" },
-  { id: "recommendations", label: "Recommendation Feed", icon: Rss, hint: "Community-curated resources" },
-  { id: "chat", label: "Chat", icon: Users, hint: "Live chat & AI companion" },
-  { id: "meet", label: "Find Someone Like Me", icon: UserPlus, hint: "Privacy-preserving matches" },
-  { id: "hello", label: "Hello", icon: Sparkles, hint: "Talk to Moonrise AI" },
-] as const;
+const PARENT_ITEMS: { id: ParentTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "home", label: "Home", icon: Sparkles },
+  { id: "activities", label: "Activities", icon: Award },
+  { id: "watchAds", label: "Watch Ads", icon: BookOpen },
+];
 
-export default function Sidebar({ activeView, onNavigate, collapsed, onToggleCollapse }: SidebarProps) {
+const ACTIVITIES_ITEMS: { id: ActivitiesSubTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "challenges", label: "Challenges", icon: Award },
+  { id: "games", label: "Games", icon: Gamepad2 },
+  { id: "tribe", label: "Tribe", icon: Users },
+  { id: "notes", label: "Notebook", icon: FileText },
+  { id: "calendar", label: "Calendar", icon: Calendar },
+  { id: "events", label: "Events", icon: Compass },
+  { id: "catalogues", label: "Catalogues", icon: BookOpen },
+];
+
+export default function Sidebar({ activeView, onNavigate, collapsed, onToggleCollapse, activitiesSubTab, onActivitiesSubTabChange }: SidebarProps) {
   return (
     <aside
       className={`sticky self-start top-14 max-h-[calc(100dvh-3.5rem)] flex flex-col shrink-0 border-r border-slate-800/80 bg-[#0a0b12]/90 backdrop-blur-md transition-all duration-300 ${
@@ -43,7 +50,7 @@ export default function Sidebar({ activeView, onNavigate, collapsed, onToggleCol
       </div>
 
       <nav className="flex-1 p-1.5 space-y-1 overflow-y-auto">
-        {ITEMS.map((it) => {
+        {PARENT_ITEMS.map((it) => {
           const Icon = it.icon;
           const isActive = activeView === it.id;
           return (
@@ -61,12 +68,35 @@ export default function Sidebar({ activeView, onNavigate, collapsed, onToggleCol
               {!collapsed && (
                 <span className="min-w-0">
                   <span className="block text-xs font-mono font-bold leading-tight">{it.label}</span>
-                  <span className="block text-[9px] text-slate-500 truncate">{it.hint}</span>
                 </span>
               )}
             </button>
           );
         })}
+
+        {activeView === "activities" && !collapsed && (
+          <div className="ml-4 mt-1 space-y-1 border-l border-slate-800/50 pl-2">
+            {ACTIVITIES_ITEMS.map((it) => {
+              const Icon = it.icon;
+              const isActive = activitiesSubTab === it.id;
+              return (
+                <button
+                  key={it.id}
+                  onClick={() => onActivitiesSubTabChange?.(it.id)}
+                  title={it.label}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all ${
+                    isActive
+                      ? "bg-turquoise-500/10 border border-turquoise-500/30 text-turquoise"
+                      : "border border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30"
+                  )}`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[11px] font-mono font-bold leading-tight">{it.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       {!collapsed && (

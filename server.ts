@@ -1,31 +1,9 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import { AstroEvent, Challenge, ChatMessage, Comment, OnlineUser } from "./src/types";
 import { astroCatalogue } from "./src/lib/events";
 import { runIngestion, getCuratedAds } from "./adIngestion";
-
-// Lazy-initialized Gemini AI client
-let aiClient: GoogleGenAI | null = null;
-
-function getAI(): GoogleGenAI {
-  if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) {
-      console.warn("WARNING: GEMINI_API_KEY is not defined. AI interactions will fall back to local rule-based simulation.");
-    }
-    aiClient = new GoogleGenAI({
-      apiKey: key || "MOCK_KEY",
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
-    });
-  }
-  return aiClient;
-}
 
 const app = express();
 const PORT = 3000;
@@ -35,7 +13,6 @@ app.use(express.json());
 // In-Memory Database State
 const onlineUsers: Map<string, OnlineUser> = new Map();
 let tribeMessages: ChatMessage[] = [];
-let aiMessages: Map<string, ChatMessage[]> = new Map(); // keyed by nickname
 
 // Seed mock Astro Events from the shared catalogue
 const astroEvents: AstroEvent[] = JSON.parse(JSON.stringify(astroCatalogue));
@@ -61,7 +38,6 @@ const challenges: Challenge[] = [
     scope: "Fun-Based",
     participationMode: "Solo",
     description: "Observe tomorrow's moonrise, moon zenith, and moonset times via MoonDial; log lunar data with snapshots; and connect lunar data to a public event.",
-    rewardXp: 80,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "Open MoonDial — Observe Lunar Times", description: "Open MoonDial, observe tomorrow's moonrise, moon zenith, and moonset times, and add a reminder with a sound notification for each." },
@@ -78,8 +54,8 @@ const challenges: Challenge[] = [
       { id: "aq3", prompt: "Engagement & Effort: On a scale of 1 to 5, how would you rate the participant's overall engagement and effort?", type: "scale" }
     ],
     bonusTasks: [
-      { id: "bt1", title: "Astro Event Journal Plan", description: "Explore astro events, pick a favorite, and journal a plan for an activity during that day (an indoor activity is strongly advised unless you are in a safe place).", xpReward: 25 },
-      { id: "bt2", title: "Auditor Experience Report", description: "Tell an auditor about your experience on that day.", xpReward: 30 }
+      { id: "bt1", title: "Astro Event Journal Plan", description: "Explore astro events, pick a favorite, and journal a plan for an activity during that day (an indoor activity is strongly advised unless you are in a safe place)." },
+      { id: "bt2", title: "Auditor Experience Report", description: "Tell an auditor about your experience on that day." }
     ],
     completionRequirement: "Submit your logged lunar snapshot and public-event reminder to the auditor or system check to mark the challenge as Finished.",
     comments: [],
@@ -95,7 +71,6 @@ const challenges: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Establish your daily rhythm by setting a wake-up alarm, scheduling your day, and completing your moonrise portfolio page.",
-    rewardXp: 70,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "Set Wake-Up Alarm", description: "Pick a time to wake up the following day — when you would usually start your day — and set an alarm." },
@@ -104,8 +79,8 @@ const challenges: Challenge[] = [
     ],
     surveyQuestions: [],
     bonusTasks: [
-      { id: "bt1", title: "Skills Catalogue Explorer", description: "Explore the skills catalogue and find a simple skill you like.", xpReward: 20 },
-      { id: "bt2", title: "5-Day Skill Practice Streak", description: "Go on a 5-day streak of practicing this skill.", xpReward: 40 }
+      { id: "bt1", title: "Skills Catalogue Explorer", description: "Explore the skills catalogue and find a simple skill you like." },
+      { id: "bt2", title: "5-Day Skill Practice Streak", description: "Go on a 5-day streak of practicing this skill." }
     ],
     completionRequirement: "Publish your completed Portfolio page to lock in your onboarding profile and transition the challenge state to Finished.",
     comments: [],
@@ -121,7 +96,6 @@ const challenges: Challenge[] = [
     scope: "Skills-Related",
     participationMode: "Solo",
     description: "Engage with a book from the catalogue, read actively, reflect on your experience, and submit a detailed reader survey.",
-    rewardXp: 90,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "Select Book from Catalogue", description: "Go to the books catalogue and pick a book that seems interesting." },
@@ -140,8 +114,8 @@ const challenges: Challenge[] = [
       { id: "q8", prompt: "Target Audience Fit: In a few words, who do you think would enjoy reading this book the most?", type: "text" }
     ],
     bonusTasks: [
-      { id: "bt1", title: "Finish the Book", description: "Finish reading the book.", xpReward: 30 },
-      { id: "bt2", title: "Take a Book Quiz", description: "Take a quiz on the book.", xpReward: 35 }
+      { id: "bt1", title: "Finish the Book", description: "Finish reading the book." },
+      { id: "bt2", title: "Take a Book Quiz", description: "Take a quiz on the book." }
     ],
     completionRequirement: "Complete and submit the 8-question reader survey to officially mark the challenge as Finished.",
     comments: [],
@@ -157,7 +131,6 @@ const challenges: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Select a current-event story, analyze source reliability and local impact, write your perspective, and submit for audit.",
-    rewardXp: 90,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "Pick Current-Event Story or News Video", description: "Pick a current-event story or news video from the platform feed or external media." },
@@ -173,8 +146,8 @@ const challenges: Challenge[] = [
       { id: "q5", prompt: "Discussion Value: Would you feel comfortable sharing or discussing this topic with a peer in Live Chat?", type: "yesno" }
     ],
     bonusTasks: [
-      { id: "bt1", title: "Current-Event Verification Quiz", description: "Answer the current-event verification quiz to test your comprehension.", xpReward: 20 },
-      { id: "bt2", title: "Public Feed Perspective Entry", description: "Share your perspective entry publicly on your personal feed (posts).", xpReward: 25 }
+      { id: "bt1", title: "Current-Event Verification Quiz", description: "Answer the current-event verification quiz to test your comprehension." },
+      { id: "bt2", title: "Public Feed Perspective Entry", description: "Share your perspective entry publicly on your personal feed (posts)." }
     ],
     completionRequirement: "Submit your written perspective and survey answers to complete the audit and mark the challenge as Finished.",
     comments: [],
@@ -190,7 +163,6 @@ const challenges: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Break unwanted habits by identifying primary triggers, writing identity reframing statements, and setting physical or digital friction barriers.",
-    rewardXp: 120,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "Identify & Log Primary Trigger", description: "Identify the habit you want to quit and log its primary trigger (time, location, emotional state, or people) in your Journal.", actionType: "log_journal" },
@@ -205,8 +177,8 @@ const challenges: Challenge[] = [
       { id: "q4", prompt: "Support Need: Would having an accountability partner or Habit Contract make you more likely to stick with this change?", type: "yesno" }
     ],
     bonusTasks: [
-      { id: "bt1", title: "Create Habit Contract", description: "Create a Habit Contract in your Journal with an accountability partner or a disincentive penalty for slipping up.", xpReward: 30 },
-      { id: "bt2", title: "5-Day Streak Avoidance Log", description: "Maintain a 5-day streak of successfully avoiding the habit and log it using Snapshot.", xpReward: 40 }
+      { id: "bt1", title: "Create Habit Contract", description: "Create a Habit Contract in your Journal with an accountability partner or a disincentive penalty for slipping up." },
+      { id: "bt2", title: "5-Day Streak Avoidance Log", description: "Maintain a 5-day streak of successfully avoiding the habit and log it using Snapshot." }
     ],
     completionRequirement: "Submit your trigger log, friction-barrier plan, and survey answers to mark the challenge as Finished.",
     comments: [],
@@ -222,7 +194,6 @@ const challenges: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Visit a local health clinic, record core vitals, research your readings, log a health-status gauge, and draft a 30-day actionable health plan.",
-    rewardXp: 110,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "Record Vitals at Clinic", description: "Visit a local health clinic or medical center and get your basic vitals recorded (e.g., blood pressure, pulse, weight, or blood sugar).", actionType: "clinic_visit" },
@@ -232,8 +203,8 @@ const challenges: Challenge[] = [
     ],
     surveyQuestions: [],
     bonusTasks: [
-      { id: "bt1", title: "Explore Disease & Health Catalogue", description: "Explore the disease and health catalogue to learn about preventive measures for one common health condition.", xpReward: 25 },
-      { id: "bt2", title: "Set Up MoonDial Health Reminders", description: "Set up daily water or exercise reminders on MoonDial to support your health plan.", xpReward: 30 }
+      { id: "bt1", title: "Explore Disease & Health Catalogue", description: "Explore the disease and health catalogue to learn about preventive measures for one common health condition." },
+      { id: "bt2", title: "Set Up MoonDial Health Reminders", description: "Set up daily water or exercise reminders on MoonDial to support your health plan." }
     ],
     completionRequirement: "Save your actionable health plan and vital-summary log in your Journal to deem the challenge officially Finished.",
     comments: [],
@@ -249,7 +220,6 @@ const challenges: Challenge[] = [
     scope: "Fun-Based",
     participationMode: "Solo",
     description: "Observe an upcoming astronomical event from the Astro Events catalogue, mark it on your MoonDial calendar, plan observation logistics, and log a live experience.",
-    rewardXp: 130,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "Select Astro Event from Catalogue", description: "Go to the Astro Events catalogue and observe the nearest upcoming astro event, or browse and select one specific event that interests you (note: choosing a distant event will affect the calendar time required to complete this challenge).", actionType: "observe_event" },
@@ -260,8 +230,8 @@ const challenges: Challenge[] = [
     ],
     surveyQuestions: [],
     bonusTasks: [
-      { id: "bt1", title: "Share Astro Event on Personal Feed", description: "Share a photo or written description of the astro event on your personal feed (posts).", xpReward: 35 },
-      { id: "bt2", title: "Live Chat Stargazer Connect", description: "Connect with another online user in Live Chat during the astro event to compare observations.", xpReward: 35 }
+      { id: "bt1", title: "Share Astro Event on Personal Feed", description: "Share a photo or written description of the astro event on your personal feed (posts)." },
+      { id: "bt2", title: "Live Chat Stargazer Connect", description: "Connect with another online user in Live Chat during the astro event to compare observations." }
     ],
     completionRequirement: "Log your final live-experience entry on the scheduled date to deem the challenge Finished.",
     comments: [],
@@ -277,7 +247,6 @@ const challenges: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Construct a master lifetime blueprint: list core lifetime goals, explain why each matters deeply, break a priority goal into actionable steps, and lock its commencement date.",
-    rewardXp: 150,
     state: "Finished",
     steps: [
       { stepNumber: 1, title: "List Master Life Goals", description: "Create a list in your Journal of the core things you want to achieve in this lifetime (your master life goals).", actionType: "life_goal" },
@@ -288,8 +257,8 @@ const challenges: Challenge[] = [
     ],
     surveyQuestions: [],
     bonusTasks: [
-      { id: "bt1", title: "Add Skill to Portfolio", description: "Add a required skill for your chosen goal from the Skills Catalogue to your Portfolio as an active focus area.", xpReward: 30 },
-      { id: "bt2", title: "Share Commencement Date for Accountability", description: "Share your target commencement date with a friend or in Live Chat to build personal accountability.", xpReward: 30 }
+      { id: "bt1", title: "Add Skill to Portfolio", description: "Add a required skill for your chosen goal from the Skills Catalogue to your Portfolio as an active focus area." },
+      { id: "bt2", title: "Share Commencement Date for Accountability", description: "Share your target commencement date with a friend or in Live Chat to build personal accountability." }
     ],
     completionRequirement: "Confirm your chosen goal, action steps, and locked commencement date in your Journal to deem the challenge Finished.",
     comments: [],
@@ -413,7 +382,7 @@ app.post("/api/challenges/:id/complete", (req, res) => {
         state: isAudited ? "Completed / Unaudited" : "Finished",
         submittedAt: new Date().toISOString()
       });
-      broadcastSSE("challenge_completed", { challengeId: id, nickname, rewardXp: challenge.rewardXp });
+      broadcastSSE("challenge_completed", { challengeId: id, nickname });
     }
   }
   res.json({ success: true, challenge });
@@ -439,154 +408,6 @@ app.post("/api/chat/messages/tribe", (req, res) => {
 
   broadcastSSE("tribe_message", newMessage);
   res.json(newMessage);
-});
-
-// AI Companion Dialog with Proactive triggers
-app.get("/api/chat/messages/companion/:nickname", (req, res) => {
-  const { nickname } = req.params;
-  const key = nickname.toLowerCase();
-  res.json(aiMessages.get(key) || []);
-});
-
-app.post("/api/chat/messages/companion", async (req, res) => {
-  const { nickname, text, appMetrics, notesSnapshot } = req.body;
-  if (!nickname) return res.status(400).json({ error: "Nickname is required" });
-
-  const userKey = nickname.toLowerCase();
-  if (!aiMessages.has(userKey)) {
-    aiMessages.set(userKey, []);
-  }
-
-  const userHistory = aiMessages.get(userKey)!;
-
-  const userMessage: ChatMessage = {
-    id: `u-${Date.now()}`,
-    sender: nickname,
-    senderName: nickname,
-    text,
-    timestamp: new Date().toISOString()
-  };
-  userHistory.push(userMessage);
-
-  // Lazy initialize and call Google GenAI
-  let replyText = "";
-  try {
-    const ai = getAI();
-    const hasKey = process.env.GEMINI_API_KEY;
-
-    if (hasKey) {
-      // Build context containing app metrics and notes for high-quality proactive astronomy support
-      const contextPrompt = `
-You are the supportive and highly conversational "Moonrise AI Companion," a supportive lunar astrologer, productivity assistant, and astronomer.
-You are interacting with ${nickname}.
-Current App Metrics Context: ${JSON.stringify(appMetrics || {})}
-Recent Notes Snapshot: ${JSON.stringify(notesSnapshot || "")}
-
-Keep your responses deeply aligned with astronomy, astrophysics, lunar phases, cosmic rhythms, and self-reflection.
-Provide supportive, insightful advice on how to align routines with moon phases (e.g., resting on New Moon, taking massive action on Full Moon, planning on Waxing Crescent, organizing on Waning Gibbous).
-Respond in a friendly, conversational, yet highly structured manner. Avoid sales jargon.
-Keep responses concise (under 150 words).
-
-Dialogue history:
-${userHistory.slice(-6).map(m => `${m.senderName}: ${m.text}`).join("\n")}
-Moonrise AI Companion:`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: contextPrompt,
-        config: {
-          temperature: 0.8,
-        }
-      });
-      replyText = response.text || "The cosmos are peaceful and silent right now. Focus on your deep breaths.";
-    } else {
-      // Fallback offline simulated responses
-      const simulatedReplies = [
-        "The current lunar phase offers a pristine window for inner reflections. What thoughts are manifesting for you?",
-        "Astrophysics reveals we are all made of stardust. Aligning your routine with the cosmos helps reduce everyday friction.",
-        "A magnificent Buck Supermoon is approaching. This represents a period of hyper-focus and abundant energy. Put those plans into action!",
-        "Under the New Moon, let us reset and write our life goals. The canvas of space is wide open for your milestones."
-      ];
-      replyText = simulatedReplies[Math.floor(Math.random() * simulatedReplies.length)];
-    }
-  } catch (err: any) {
-    console.error("Gemini API error:", err);
-    replyText = "The solar winds are currently causing interference. Take a moment to stargaze, and let's speak again shortly.";
-  }
-
-  const aiMessage: ChatMessage = {
-    id: `ai-${Date.now()}`,
-    sender: "AI",
-    senderName: "moonrise Bot",
-    text: replyText,
-    timestamp: new Date().toISOString()
-  };
-  userHistory.push(aiMessage);
-
-  res.json({ success: true, messages: [userMessage, aiMessage] });
-});
-
-// Proactive Engagement endpoint triggered by clients periodically
-app.post("/api/chat/proactive", async (req, res) => {
-  const { nickname, appMetrics, notesSnapshot, triggerType } = req.body;
-  if (!nickname) return res.status(400).json({ error: "Nickname is required" });
-
-  const userKey = nickname.toLowerCase();
-  const userHistory = aiMessages.get(userKey) || [];
-
-  let triggerPrompt = "";
-  if (triggerType === "morning") {
-    triggerPrompt = "It is morning check-in time. Autonomously initiate a warm cosmic greeting. Ask how they slept or recommend an alignment routine.";
-  } else if (triggerType === "night") {
-    triggerPrompt = "It is late-night astronomical hour. Recommend looking at the stars, or comment on the current moon positioning.";
-  } else if (triggerType === "notes_added") {
-    triggerPrompt = "The user just saved a journal or memory note. Gently comment on their reflection or offer a cosmic insight.";
-  } else {
-    triggerPrompt = "Autonomously check in on their current daily challenge progress or XP level.";
-  }
-
-  let replyText = "";
-  try {
-    const ai = getAI();
-    if (process.env.GEMINI_API_KEY) {
-      const contextPrompt = `
-You are the supportive and warm "Moonrise AI Companion."
-You are initiating a proactive supportive message to ${nickname}.
-Context trigger: ${triggerPrompt}
-Current User XP: ${appMetrics?.xp || 0}
-Recent notes context: ${JSON.stringify(notesSnapshot || "")}
-
-Draft a direct, supportive, and reflective micro-message (under 80 words) to spark their productivity relationship.
-Moonrise AI Companion:`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: contextPrompt,
-        config: {
-          temperature: 0.8
-        }
-      });
-      replyText = response.text || "Stardust glows brighter when we synchronize. Keep up your amazing cosmic path!";
-    } else {
-      replyText = "The stars whisper encouragement. Remember to check your daily routine timetable to align with today's cycle!";
-    }
-  } catch (err) {
-    replyText = "May the celestial tides guide your path. Keep up your amazing routines today!";
-  }
-
-  const aiMessage: ChatMessage = {
-    id: `ai-proactive-${Date.now()}`,
-    sender: "AI",
-    senderName: "moonrise Bot",
-    text: replyText,
-    timestamp: new Date().toISOString(),
-    isProactive: true
-  };
-
-  if (!aiMessages.has(userKey)) aiMessages.set(userKey, []);
-  aiMessages.get(userKey)!.push(aiMessage);
-
-  res.json({ success: true, message: aiMessage });
 });
 
 // SSE subscription route

@@ -7,8 +7,6 @@ import { Challenge } from "../types";
 import { getLunarStatus } from "../lib/lunar";
 
 interface ChallengesDashboardProps {
-  xp: number;
-  onAddXp: (amount: number) => void;
   onNavigateToView?: (view: string) => void;
   onShareFeed?: (entry: { kind: any; title?: string; body?: string; refId?: string; refType?: string; experience?: string }) => void;
 }
@@ -89,7 +87,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Skills-Related",
     participationMode: "Solo",
     description: "Use MoonDial to observe the moonrise, zenith, and moonset in a single night, then connect the lunar data you captured to a public astronomy event in your area.",
-    rewardXp: 80,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -105,7 +102,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Set a daily wake-up alarm, schedule your day the night before, and complete your personal portfolio page with a clear bio and goals.",
-    rewardXp: 70,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -121,7 +117,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Read a book from the community catalogue and submit a short reader survey sharing what resonated with you and one insight you'll apply.",
-    rewardXp: 90,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -137,7 +132,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Pick a current-event story, analyze it from multiple angles, and write a short personal perspective on what it means for your community.",
-    rewardXp: 90,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -153,7 +147,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Identify the triggers behind a habit you want to drop, then build friction barriers that make the unwanted behavior harder to start.",
-    rewardXp: 120,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -169,7 +162,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Record your core vitals during a clinic visit, then draft a practical 30-day health plan with measurable weekly targets.",
-    rewardXp: 110,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -185,7 +177,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Skills-Related",
     participationMode: "Solo",
     description: "Observe a notable astro event (eclipse, meteor shower, or supermoon) and log a live, in-the-moment experience with your impressions and data.",
-    rewardXp: 130,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -213,7 +204,7 @@ const FALLBACK_CHALLENGES: Challenge[] = [
 ];
 
 
-export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onShareFeed }: ChallengesDashboardProps) {
+export default function ChallengesDashboard({ onNavigateToView, onShareFeed }: ChallengesDashboardProps) {
   const lunar = getLunarStatus(new Date());
 
   /* ---------- Daily Tasks ---------- */
@@ -233,7 +224,6 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
     setDailyTasks(prev => prev.map(t => {
       if (t.id !== id) return t;
       const done = !t.done;
-      if (done) onAddXp(5); // small XP for completion
       return { ...t, done };
     }));
   };
@@ -242,9 +232,7 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
   /* ---------- Lunar-Phase Streak ---------- */
   const [lunarStreak, setLunarStreak] = useState<Streak>(() => loadStreak("mb_lunar_streak"));
   const logLunar = () => {
-    const next = logStreak("mb_lunar_streak");
-    setLunarStreak(next);
-    onAddXp(10);
+    setLunarStreak(logStreak("mb_lunar_streak"));
   };
 
   // Build a row of recent lunar-phase chips (last 8 days).
@@ -258,9 +246,7 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
   /* ---------- Project Tracking Streak ---------- */
   const [projectStreak, setProjectStreak] = useState<Streak>(() => loadStreak("mb_project_streak"));
   const logProject = () => {
-    const next = logStreak("mb_project_streak");
-    setProjectStreak(next);
-    onAddXp(10);
+    setProjectStreak(logStreak("mb_project_streak"));
   };
   const [projectNote, setProjectNote] = useState("");
   useEffect(() => {
@@ -279,7 +265,6 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
     if (!newMeal.trim()) return;
     setMeals(prev => [{ id: "m-" + Date.now(), text: newMeal.trim(), time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }, ...prev]);
     setNewMeal("");
-    onAddXp(8); // reward for logging
   };
 
   /* ---------- Multiplayer: 3-Hint Phrase Game ---------- */
@@ -296,7 +281,6 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
   const submitGuess = () => {
     if (guess.trim().toLowerCase() === phrase.answer.toLowerCase()) {
       setPhraseResult("win");
-      onAddXp(15);
     } else {
       setPhraseResult("lose");
     }
@@ -350,11 +334,10 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
     const nextState = { ...completedChallenges, [ch.id]: true };
     setCompletedChallenges(nextState);
     localStorage.setItem("mb_completed_challenges", JSON.stringify(nextState));
-    onAddXp(ch.rewardXp || 50);
     onShareFeed?.({
       kind: "challenge_badge",
       title: `Completed: ${ch.title}`,
-      body: `Earned +${ch.rewardXp || 50} XP via moonrise Challenges.`,
+      body: `Completed a moonrise community challenge.`,
       refId: ch.id,
       refType: "challenge",
       experience: "Completed a moonrise community challenge.",
@@ -389,23 +372,13 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-xl text-center">
-              <span className="text-[9px] font-mono text-slate-500 block uppercase">LUNAR STREAK</span>
-              <span className="text-sm font-bold font-mono text-turquoise">🔥 {lunarStreak.count} Days</span>
-            </div>
-            <div className="bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-xl text-center">
-              <span className="text-[9px] font-mono text-slate-500 block uppercase">XP</span>
-              <span className="text-sm font-bold font-mono text-emerald-400">{xp} XP</span>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* 7. CHALLENGES CATALOGUE */}
       <SectionCard icon={<Trophy className="w-4 h-4 text-turquoise" />} title="Challenges Catalogue">
-        <p className="text-[11px] text-slate-400 font-mono mb-3">
-          Complete community challenges to earn XP and share a badge to your feed.
+          <p className="text-[11px] text-slate-400 font-mono mb-3">
+            Complete community challenges to earn Cheese and share a badge to your feed.
           {catError && <span className="text-turquoise/70"> (showing offline copy)</span>}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -416,13 +389,13 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
                 <div>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-[9px] font-mono text-turquoise uppercase border border-turquoise-500/30 px-1.5 py-0.5 rounded">{ch.category}</span>
-                    <span className="text-[9px] font-mono text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded">{ch.rewardXp} XP</span>
+                    <span className="text-[9px] font-mono text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded">Challenge</span>
                   </div>
                   <h3 className={`text-xs font-bold font-mono mt-1.5 ${done ? "text-emerald-300 line-through" : "text-slate-100"}`}>{ch.title}</h3>
                   <p className="text-[11px] text-slate-400 font-sans leading-relaxed mt-1 line-clamp-2">{ch.description}</p>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-slate-900">
-                  <span className="text-[11px] font-mono font-bold text-emerald-400">+{ch.rewardXp} XP</span>
+                   <span className="text-[11px] font-mono font-bold text-turquoise-dim">Completed</span>
                   {done ? (
                     <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
                       <CheckCircle className="w-3.5 h-3.5" /> FINISHED
@@ -459,7 +432,7 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
           </button>
         </div>
         <div className="space-y-2">
-          {dailyTasks.length === 0 && <p className="text-[11px] text-slate-500 font-mono">No tasks yet. Add one to start earning XP.</p>}
+          {dailyTasks.length === 0 && <p className="text-[11px] text-slate-500 font-mono">No tasks yet. Add one to get started.</p>}
           {dailyTasks.map(t => (
             <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-800 bg-slate-950/40">
               <label className="flex items-center gap-2.5 cursor-pointer flex-1">
@@ -488,7 +461,7 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
             <span className="text-sm font-bold font-mono text-turquoise">{lunar.age} d</span>
           </div>
           <button onClick={logLunar} className="ml-auto px-3 py-2 rounded-xl bg-turquoise-500 hover:bg-turquoise-400 text-slate-950 font-mono font-bold text-xs uppercase flex items-center gap-1">
-            <Flame className="w-4 h-4" /> Log Today's Activity (+10 XP)
+              <Flame className="w-4 h-4" /> Log Today's Activity
           </button>
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -546,7 +519,7 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
             ) : (
               <div className="p-2 rounded-lg border border-turquoise-500/30 bg-turquoise-500/5">
                 <span className={`text-xs font-mono font-bold ${phraseResult === "win" ? "text-emerald-400" : "text-slate-300"}`}>
-                  {phraseResult === "win" ? "Correct! +15 XP" : `Answer: ${phrase.answer}`}
+                  {phraseResult === "win" ? "Correct!" : `Answer: ${phrase.answer}`}
                 </span>
               </div>
             )}
@@ -598,7 +571,7 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
             <span className="text-sm font-bold font-mono text-turquoise">📈 {projectStreak.count} Days</span>
           </div>
           <button onClick={logProject} className="px-3 py-2 rounded-xl bg-turquoise-500 hover:bg-turquoise-400 text-slate-950 font-mono font-bold text-xs uppercase flex items-center gap-1">
-            <Footprints className="w-4 h-4" /> Log Today's Progress (+10 XP)
+              <Footprints className="w-4 h-4" /> Log Today's Progress
           </button>
         </div>
         <div className="mt-3">
@@ -625,7 +598,7 @@ export default function ChallengesDashboard({ xp, onAddXp, onNavigateToView, onS
             className="flex-1 pl-3 pr-4 py-2 rounded-xl border border-slate-800 bg-slate-950 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-turquoise-500 font-mono"
           />
           <button onClick={addMeal} className="px-3 py-2 rounded-xl bg-turquoise-500 hover:bg-turquoise-400 text-slate-950 font-mono font-bold text-xs uppercase flex items-center gap-1">
-            <Plus className="w-4 h-4" /> Log (+8 XP)
+              <Plus className="w-4 h-4" /> Log
           </button>
         </div>
         <div className="space-y-2">

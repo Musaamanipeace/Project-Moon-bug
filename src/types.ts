@@ -49,7 +49,6 @@ export interface BonusTask {
   id: string;
   title: string;
   description: string;
-  xpReward: number;
   completed?: boolean;
 }
 
@@ -70,7 +69,6 @@ export interface TargetMilestone {
   id: string;
   label: string;
   description: string;
-  rewardXp: number;
 }
 
 export interface CreatorReward {
@@ -119,7 +117,6 @@ export interface Challenge {
   targetMilestones?: TargetMilestone[];
   description: string;
   goal?: string;
-  rewardXp: number;
   creatorSponsoredRewards?: CreatorReward[];
   date?: string;
   steps: ChallengeStep[];
@@ -215,11 +212,47 @@ export interface FeedItem {
   kind: FeedKind;
   title?: string;
   body?: string;
-  refId?: string;      // id of the referenced entity (event, challenge, ad, catalogue item)
-  refType?: string;    // 'event' | 'challenge' | 'ad' | 'brand' | 'book'
-  experience?: string; // challenge-completion experience text ("view player's challenge experience")
+  refId?: string;
+  refType?: string;
+  experience?: string;
+  bannerUrl?: string;
   timestamp: string;
   likes?: number;
+}
+
+export type RecommendationCategory = "course" | "youtube" | "book" | "movie" | "product";
+
+export interface RecommendationItem {
+  id: string;
+  title: string;
+  description: string;
+  category: RecommendationCategory;
+  author: string;
+  likes: number;
+  url?: string;
+  bannerUrl?: string;
+}
+
+export interface TribeInvite {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  status: "pending" | "accepted" | "declined";
+  createdAt: string;
+}
+
+export type GameStatus = "pending" | "approved" | "rejected";
+
+export interface Game {
+  id: string;
+  title: string;
+  description: string;
+  gameType: "phrase-guess" | "chess";
+  hostNickname: string;
+  status: GameStatus;
+  createdAt: string;
+  participants: string[];
 }
 
 export interface Brand {
@@ -282,7 +315,6 @@ export interface UserProfile {
   };
   favoriteStar: string;
   projects: string[];
-  xp: number;
   trophies: string[];
   birthDate?: string;
   btcWalletBalance: number;
