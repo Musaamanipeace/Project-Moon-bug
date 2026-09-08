@@ -130,6 +130,7 @@ export interface Challenge {
   isCustom?: boolean;
   createdBy?: string;
   state: 'Unfinished' | 'Finished' | 'Completed / Unaudited' | 'Evolving';
+  rewardXp?: number;
 }
 
 export interface JournalEntry {

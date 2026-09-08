@@ -11,7 +11,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { getLunarStatus, SYNODIC_MONTH } from "../lib/lunar";
-import { AstroEvent } from "../types";
+import { AstroEvent, Challenge } from "../types";
 
 interface DialDashboardProps {
   locationText: string;

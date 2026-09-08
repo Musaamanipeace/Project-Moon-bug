@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Sun, Moon, Info, Sparkles, Wifi, WifiOff, LogOut, Bell, User, Settings } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Sun, Moon, Info, Sparkles, Wifi, WifiOff, LogOut, Bell, User, Settings, Tv, Megaphone, CalendarDays, Award, FileText, BookOpen, Gamepad2, Users, MessageSquare, HelpCircle } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 import type { ParentTab } from "../App";
@@ -30,15 +30,85 @@ export default function Header({ activeView, isOnline, theme, onThemeToggle, isL
       desc: "Observe real-time celestial coordinates on our MoonDial and discover community recommendations.",
       steps: "Track lunar phases, browse paywall-free resources, or watch nature-conscious ads.",
     },
-    activities: {
-      title: "Activities",
-      desc: "Complete community challenges, play multiplayer games, connect with your tribe, or manage your notebook.",
-      steps: "Pick a sub-tab from the Activities navigation bar to get started.",
-    },
     watchAds: {
       title: "Watch Ads",
-      desc: "Curated, nature-conscious and public-awareness campaigns from community advertisers.",
-      steps: "Browse the Watch shelf, earn Cheese for viewing, or advertise your own campaign.",
+      desc: "Curated, nature-conscious and public-awareness campaigns. Earn Cheese for watching.",
+      steps: "Browse the Watch shelf and earn Cheese for viewing ads.",
+    },
+    advertise: {
+      title: "Advertise",
+      desc: "Upload campaigns and track ad engagement, comments, and emoji reactions using Cheese tokens.",
+      steps: "Upload a new campaign or manage existing ones from the Advertise dashboard.",
+    },
+    moondial: {
+      title: "Moondial",
+      desc: "Interactive 3D lunar clock and calendar. Track moonrise, zenith, moonset, and upcoming astro events.",
+      steps: "Use the MoonDial to observe lunar coordinates, or browse the calendar for event dates.",
+    },
+    challenges: {
+      title: "Challenges",
+      desc: "Complete community challenges, play multiplayer games, connect with your tribe, and track your notebook.",
+      steps: "Browse challenges, play games, or navigate to Games/Tribe via the overflow menu.",
+    },
+    portfolio: {
+      title: "Portfolio",
+      desc: "View your profile, rank, achievements, and shared personal feed. Manage possessions and interests.",
+      steps: "Explore your profile sections using the navigation cards below.",
+    },
+    notebook: {
+      title: "Notebook",
+      desc: "Floatable daily planner, ideas, project tracking, and personal catalogues. Daytime writing mode.",
+      steps: "Use the Daily Planner, capture ideas, manage projects, or archive challenge logs.",
+    },
+    catalogues: {
+      title: "Catalogues",
+      desc: "Community-curated lists of books, movies, courses, and products recommended by the tribe.",
+      steps: "Browse categories, subscribe to items, or share your own catalogue entries.",
+    },
+    games: {
+      title: "Games",
+      desc: "Multiplayer games: a 3-hint AI phrase-guessing game and chess. Win streaks earn XP.",
+      steps: "Reveal hints, guess phrases, or move chess pieces. Back to Challenges for more.",
+    },
+    tribe: {
+      title: "Tribe",
+      desc: "Your matched tribe members. The highest-Xp member becomes Ruler, forming an Empire.",
+      steps: "Browse your tribe roster, view profiles, or chat with members.",
+    },
+    calendar: {
+      title: "Calendar",
+      desc: "Monthly calendar with lunar-phase highlights and upcoming astro events.",
+      steps: "Navigate months, view event details, or jump to the Moondial.",
+    },
+    events: {
+      title: "Events",
+      desc: "Upcoming astronomical events and active community challenges. Add notes and comments.",
+      steps: "Browse events and challenges, add comments, or share to your feed.",
+    },
+    notifications: {
+      title: "Notifications",
+      desc: "System, event, and challenge notifications. Stay updated on community activity.",
+      steps: "Review all notifications and click through to relevant views.",
+    },
+    chat: {
+      title: "Chat",
+      desc: "Chat with the AI Companion or your Tribe. AI has a daily message cap.",
+      steps: "Switch between AI and Tribe tabs, send messages, earn XP for participation.",
+    },
+    hello: {
+      title: "Hello",
+      desc: "Personal greeting and quick-access hub. Check your rank progress and tonight's sky.",
+      steps: "Use the quick-access buttons to jump to Moondial, Challenges, Notebook, or Chat.",
+    },
+    findSomeoneLikeMe: {
+      title: "Find Someone",
+      desc: "Privacy-preserving matchmaking based on shared profile traits. XP-gated.",
+      steps: "Browse matches, accept or reject users, and build your Tribe.",
+    },
+    recommendationFeed: {
+      title: "Recommendations",
+      desc: "Endless feed of community-recommended courses, videos, books, movies, and products.",
+      steps: "Browse by category, subscribe or unsubscribe, or visit source links.",
     },
   };
 
@@ -78,7 +148,7 @@ export default function Header({ activeView, isOnline, theme, onThemeToggle, isL
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [];
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-[#0a0b10]/80 dark:bg-[#0a0b10]/80 light:bg-slate-100/90 backdrop-blur-md transition-all duration-300">

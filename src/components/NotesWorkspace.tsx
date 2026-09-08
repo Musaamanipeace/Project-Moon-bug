@@ -372,7 +372,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
 
   const writeZone =
-    "w-full border-0 bg-slate-950/40 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:bg-slate-950/60 transition-colors resize-none";
+    "w-full bg-transparent border-0 border-b-2 border-slate-200/30 p-0 text-base text-slate-700 placeholder-slate-400 focus:outline-none focus:border-turquoise-500/40 transition-colors resize-none pb-2";
 
   const scopeBtn = (key: typeof activeScope, label: string, Icon: React.FC<{ className?: string }>) => (
     <button
@@ -380,7 +380,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
       className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border font-mono text-xs text-left min-w-[130px] transition-all duration-300 focus:outline-none ${
         activeScope === key
           ? "border-turquoise-500 bg-turquoise-500/10 text-turquoise-bright shadow-md shadow-turquoise-500/5"
-          : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+          : "border-slate-300 text-slate-500 hover:border-turquoise-500/50 hover:text-slate-700 hover:bg-turquoise-500/5"
       }`}
     >
       <Icon className="w-4 h-4 flex-shrink-0" />
@@ -389,11 +389,11 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
   );
 
   return (
-    <div
-      className="grid grid-cols-1 md:grid-cols-4 gap-6 p-4 text-slate-100 max-w-6xl mx-auto rounded-2xl"
+     <div
+      className="grid grid-cols-1 md:grid-cols-4 gap-6 p-4 text-slate-800 max-w-6xl mx-auto rounded-2xl"
       style={{
-        background: "linear-gradient(160deg, #1b2230, #161d29 60%, #0d121b)",
-        boxShadow: "inset 0 0 120px rgba(214, 188, 140, 0.06)"
+        background: "linear-gradient(160deg, #e8f0f0, #d1e4e9 60%, #c2dde0)",
+        boxShadow: "inset 0 0 80px rgba(45, 90, 110, 0.12)"
       }}
     >
       <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
@@ -402,20 +402,20 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
         {scopeBtn("projects", "Projects", FolderPlus)}
         {scopeBtn("archives", "Archives & Lists", Archive)}
 
-        <div className="md:mt-auto pt-3 border-t border-slate-800/70 px-1">
-          <span className="text-[10px] font-mono text-slate-500 uppercase block">Notebook XP</span>
-          <span className="text-sm font-bold font-mono text-turquoise block">{xp} Cheese</span>
-          <span className="text-[9px] font-mono text-slate-500">Daytime writing mode</span>
-        </div>
+          <div className="md:mt-auto pt-3 border-t border-slate-300/40 px-1">
+            <span className="text-[10px] font-mono text-slate-500 uppercase">Notebook XP</span>
+            <span className="text-sm font-bold font-mono text-turquoise block">{xp} Cheese</span>
+            <span className="text-[9px] font-mono text-slate-500">Daytime writing mode</span>
+          </div>
       </div>
 
-      <div className="md:col-span-3 min-h-[460px] p-5 rounded-2xl border border-slate-800/70 bg-slate-900/40 backdrop-blur-xl">
-        {activeScope === "planner" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">📅 DAILY PLANNER</h3>
-              <span className="text-[10px] font-mono text-slate-400">+5 XP / task · +10 done</span>
-            </div>
+        <div className="md:col-span-3 min-h-[460px] p-5 rounded-2xl border border-slate-300/40 bg-[#e8f0f0]/60 backdrop-blur-xl">
+          {activeScope === "planner" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">📅 DAILY PLANNER</h3>
+                <span className="text-[10px] font-mono text-slate-500">+5 XP / task · +10 done</span>
+              </div>
 
             <div className="flex flex-wrap gap-2">
               {(["today", "tomorrow", "custom"] as PlannerScope[]).map((v) => (
@@ -425,7 +425,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   className={`px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-wider border transition-all ${
                     plannerView === v
                       ? "border-turquoise-500 bg-turquoise-500/10 text-turquoise-bright"
-                      : "border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200"
+                      : "border-slate-300/40 bg-[#f0f5f6]/60 text-slate-500 hover:text-slate-700"
                   }`}
                 >
                   {v === "today" ? "Today" : v === "tomorrow" ? "Tomorrow" : "Custom Range"}
@@ -436,7 +436,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   type="date"
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
-                  className="px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950/60 text-xs text-slate-200 font-mono focus:outline-none"
+                  className="px-2 py-1.5 rounded-lg border border-slate-300/40 bg-[#f0f5f6]/50 text-xs text-slate-700 font-mono focus:outline-none"
                 />
               )}
               <span className="self-center text-[10px] font-mono text-slate-500">
@@ -444,31 +444,31 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
               </span>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3">
-              <textarea
-                value={plannerText}
-                onChange={(e) => setPlannerText(e.target.value)}
-                placeholder="Plan a task for this day (e.g., Morning meditation, Submit report)…"
-                className={`${writeZone} h-20`}
-              />
+             <div className="p-4 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/60 space-y-3">
+               <textarea
+                 value={plannerText}
+                 onChange={(e) => setPlannerText(e.target.value)}
+                 placeholder="Plan a task for this day (e.g., Morning meditation, Submit report)…"
+                 className={`${writeZone} h-20`}
+               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-mono text-slate-400">Deadline (optional)</label>
+                  <label className="text-[10px] font-mono text-slate-500">Deadline (optional)</label>
                   <input
                     type="datetime-local"
                     value={plannerDeadline}
                     onChange={(e) => setPlannerDeadline(e.target.value)}
-                    className="px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950/60 text-xs text-slate-200 focus:outline-none"
+                    className="px-2 py-1.5 rounded-lg border border-slate-300/40 bg-[#f0f5f6]/50 text-xs text-slate-700 focus:outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-mono text-slate-400">Custom Alert Note (optional)</label>
+                  <label className="text-[10px] font-mono text-slate-500">Custom Alert Note (optional)</label>
                   <input
                     type="text"
                     value={plannerAlert}
                     onChange={(e) => setPlannerAlert(e.target.value)}
                     placeholder="e.g., Ping me 30 min before"
-                    className="px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950/60 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+                    className="px-2 py-1.5 rounded-lg border border-slate-300/40 bg-[#f0f5f6]/50 text-xs text-slate-700 placeholder-slate-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -484,7 +484,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
             </div>
 
             <div className="space-y-2 pt-1">
-              <h4 className="text-xs font-bold font-mono text-slate-400 tracking-wider uppercase">Checklist</h4>
+              <h4 className="text-xs font-bold font-mono text-slate-500 tracking-wider uppercase">Checklist</h4>
               {visiblePlannerTasks.length === 0 ? (
                 <p className="text-xs text-slate-500 text-center py-6 font-mono">No tasks planned for this view yet.</p>
               ) : (
@@ -492,61 +492,50 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   {visiblePlannerTasks.map((t) => {
                     const status = deadlineStatus(t.deadline, t.done);
                     return (
-                      <div
-                        key={t.id}
-                        className={`flex items-start justify-between p-3 rounded-xl border transition-all ${
-                          t.done
-                            ? "border-emerald-500/20 bg-emerald-950/10"
-                            : status === "overdue"
-                            ? "border-red-500/40 bg-red-950/10"
-                            : status === "soon"
-                            ? "border-amber-500/40 bg-amber-950/10"
-                            : "border-slate-800/80 bg-slate-950/40 hover:border-slate-700"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <button
-                            onClick={() => handleTogglePlannerTask(t.id)}
-                            className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-lg border transition-all ${
-                              t.done
-                                ? "border-emerald-500 bg-emerald-500 text-slate-950"
-                                : "border-slate-700 hover:border-turquoise-500 bg-slate-950"
-                            }`}
-                          >
-                            {t.done && <Check className="w-3.5 h-3.5" />}
-                          </button>
-                          <div>
-                            <span className={`text-xs font-bold font-mono block ${t.done ? "line-through text-slate-500" : "text-slate-200"}`}>
-                              {t.text}
-                            </span>
-                            {t.deadline && (
-                              <span
-                                className={`text-[9px] font-mono px-1.5 py-0.5 rounded mt-1 inline-flex items-center gap-1 ${
-                                  status === "overdue"
-                                    ? "bg-red-950/40 text-red-400"
-                                    : status === "soon"
-                                    ? "bg-amber-950/40 text-amber-300"
-                                    : "bg-slate-900 text-slate-400"
-                                }`}
-                              >
-                                <Clock className="w-3 h-3" />
-                                {new Date(t.deadline).toLocaleString()}
-                                {status === "overdue" && " · OVERDUE"}
-                                {status === "soon" && " · SOON"}
-                              </span>
-                            )}
-                            {t.alertNote && (
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-turquoise-950/40 text-turquoise ml-1 inline-flex items-center gap-1">
-                                <Bell className="w-3 h-3" />
-                                {t.alertNote}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleDeletePlannerTask(t.id)}
-                          className="p-1.5 rounded-lg bg-slate-900/60 text-slate-500 hover:text-red-400 hover:bg-red-950/20 transition-all"
+                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-300/40 bg-[#f7fafb]/60">
+                  <div className="flex items-start gap-3">
+                    <button
+                      onClick={() => handleTogglePlannerTask(t.id)}
+                      className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-lg border transition-all ${
+                        t.done
+                          ? "border-emerald-500 bg-emerald-500 text-slate-950"
+                          : "border-slate-400 hover:border-turquoise-500 bg-white"
+                      }`}
+                    >
+                      {t.done && <Check className="w-3 h-3" />}
+                    </button>
+                    <div>
+                      <span className={`text-xs font-bold font-mono block ${t.done ? "line-through text-slate-500" : "text-slate-700"}`}>
+                        {t.text}
+                      </span>
+                      {t.deadline && (
+                        <span
+                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded mt-1 inline-flex items-center gap-1 ${
+                            status === "overdue"
+                              ? "bg-red-100 text-red-600"
+                              : status === "soon"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-slate-200 text-slate-500"
+                          }`}
                         >
+                          <Clock className="w-3 h-3" />
+                          {new Date(t.deadline).toLocaleString()}
+                          {status === "overdue" && " · OVERDUE"}
+                          {status === "soon" && " · SOON"}
+                        </span>
+                      )}
+                      {t.alertNote && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-turquoise-100 text-turquoise ml-1 inline-flex items-center gap-1">
+                          <Bell className="w-3 h-3" />
+                          {t.alertNote}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeletePlannerTask(t.id)}
+                    className="p-1.5 rounded-lg bg-white text-slate-500 hover:text-red-400 hover:bg-red-50 transition-all"
+                  >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -562,10 +551,10 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">💡 IDEAS — QUICK CAPTURE</h3>
-              <span className="text-[10px] font-mono text-slate-400">+10 XP</span>
+              <span className="text-[10px] font-mono text-slate-500">+10 XP</span>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3">
+            <div className="p-4 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/60 space-y-3">
               <textarea
                 value={ideaText}
                 onChange={(e) => setIdeaText(e.target.value)}
@@ -573,7 +562,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                 className={`${writeZone} h-20`}
               />
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-mono text-slate-400">Category:</span>
+                <span className="text-[10px] font-mono text-slate-500">Category:</span>
                 {IDEA_CATEGORIES.map((c) => (
                   <button
                     key={c}
@@ -581,7 +570,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                     className={`px-2.5 py-1 rounded-lg ${
                       ideaCategory === c
                         ? "border border-turquoise-500 bg-turquoise-500/10 text-turquoise-bright font-mono text-[10px] uppercase"
-                        : "border border-slate-800 bg-slate-950/40 text-slate-400 font-mono text-[10px] uppercase hover:text-slate-200"
+                        : "border border-slate-300/40 bg-[#f0f5f6]/60 text-slate-500 font-mono text-[10px] uppercase hover:text-slate-700"
                     }`}
                   >
                     {c}
@@ -603,14 +592,14 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {ideas.map((i) => (
-                    <div key={i.id} className="p-3 rounded-xl border border-slate-800 bg-slate-950/30 space-y-1">
+                    <div key={i.id} className="p-3 rounded-xl border border-slate-300/40 bg-[#e8f0f0]/40 space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-900 text-turquoise">{i.category}</span>
-                        <button onClick={() => handleDeleteIdea(i.id)} className="p-1 rounded bg-slate-900 text-slate-400 hover:text-red-400">
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#f0f5f6]/60 text-turquoise">{i.category}</span>
+                        <button onClick={() => handleDeleteIdea(i.id)} className="p-1 rounded bg-[#f0f5f6]/60 text-slate-500 hover:text-red-400">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
-                      <p className="text-[12px] text-slate-200 leading-relaxed whitespace-pre-line font-sans">{i.text}</p>
+                      <p className="text-[12px] text-slate-700 leading-relaxed whitespace-pre-line font-sans">{i.text}</p>
                       <span className="text-[9px] font-mono text-slate-500 block">{i.timestamp}</span>
                     </div>
                   ))}
@@ -624,29 +613,29 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">📁 PROJECTS</h3>
-              <span className="text-[10px] font-mono text-slate-400">+20 XP</span>
+              <span className="text-[10px] font-mono text-slate-500">+20 XP</span>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3">
+            <div className="p-4 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/60 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-mono text-slate-400">Project Name</label>
+                  <label className="text-[10px] font-mono text-slate-500">Project Name</label>
                   <input
                     type="text"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
                     placeholder="e.g., Lunar Photography Portfolio"
-                    className="px-2.5 py-2 rounded-xl border border-slate-800 bg-slate-950 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+                    className="px-2.5 py-2 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/50 text-xs placeholder-slate-400 focus:outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-mono text-slate-400">Description</label>
+                  <label className="text-[10px] font-mono text-slate-500">Description</label>
                   <input
                     type="text"
                     value={newProjectDesc}
                     onChange={(e) => setNewProjectDesc(e.target.value)}
                     placeholder="Brief description"
-                    className="px-2.5 py-2 rounded-xl border border-slate-800 bg-slate-950 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+                    className="px-2.5 py-2 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/50 text-xs placeholder-slate-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -663,7 +652,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <h4 className="text-xs font-bold font-mono text-slate-400 tracking-wider uppercase">Active Projects</h4>
+                <h4 className="text-xs font-bold font-mono text-slate-500 tracking-wider uppercase">Active Projects</h4>
                 {projects.length === 0 ? (
                   <p className="text-xs text-slate-500 text-center py-4 font-mono">No projects yet.</p>
                 ) : (
@@ -675,19 +664,19 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                         className={`p-3 rounded-xl border cursor-pointer transition-all ${
                           selectedProjectId === p.id
                             ? "border-turquoise-500 bg-turquoise-500/10"
-                            : "border-slate-800 bg-slate-950/40 hover:border-slate-700"
+                            : "border-slate-300/40 bg-[#f0f5f6]/60 hover:border-slate-300/60"
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold font-mono text-slate-200">{p.name}</span>
+                          <span className="text-xs font-bold font-mono text-slate-700">{p.name}</span>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteProject(p.id); }}
-                            className="p-1 rounded bg-slate-900 text-slate-400 hover:text-red-400"
+                            className="p-1 rounded bg-[#f0f5f6]/60 text-slate-500 hover:text-red-400"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{p.description || "No description"}</p>
+                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{p.description || "No description"}</p>
                         <div className="flex items-center gap-2 mt-2 text-[9px] text-slate-500 font-mono">
                           <span>{p.links.length} links</span>
                           <span>·</span>
@@ -702,7 +691,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
               </div>
 
               {selectedProject && (
-                <div className="space-y-3 p-4 rounded-xl border border-slate-800 bg-slate-950/50">
+                <div className="space-y-3 p-4 rounded-xl border border-slate-300/40 bg-[#e8f0f0]/50">
                   <h4 className="text-xs font-bold font-mono text-turquoise uppercase tracking-wider">
                     {selectedProject.name} — Project AI Assistant
                   </h4>
@@ -713,11 +702,11 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                       value={projectLink}
                       onChange={(e) => setProjectLink(e.target.value)}
                       placeholder="Add resource link…"
-                      className="flex-1 px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+                      className="flex-1 px-2 py-1.5 rounded-lg border border-slate-300/40 bg-[#f0f5f6]/50 text-xs placeholder-slate-400 focus:outline-none"
                     />
                     <button
                       onClick={handleAddProjectLink}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs font-bold"
+                      className="px-3 py-1.5 rounded-lg bg-[#cbd5d8]/40 hover:bg-[#a8b8be]/40 text-slate-700 font-mono text-xs font-bold"
                     >
                       <Link2 className="w-3.5 h-3.5 inline" /> Add
                     </button>
@@ -725,13 +714,13 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   {selectedProject.links.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedProject.links.map((l, idx) => (
-                        <span key={idx} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-turquoise">{l}</span>
+                        <span key={idx} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#f0f5f6]/60 text-turquoise">{l}</span>
                       ))}
                     </div>
                   )}
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-slate-400">Project Brief (auto-generates planner)</label>
+                    <label className="text-[10px] font-mono text-slate-500">Project Brief (auto-generates planner)</label>
                     <textarea
                       value={newProjectBrief}
                       onChange={(e) => setNewProjectBrief(e.target.value)}
@@ -748,7 +737,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
 
                   {selectedProject.planner.length > 0 && (
                     <div className="space-y-1">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase flex items-center gap-1">
+                      <span className="text-[10px] font-mono text-slate-500 uppercase flex items-center gap-1">
                         <ListChecks className="w-3.5 h-3.5" /> Project Planner
                       </span>
                       {selectedProject.planner.map((it) => (
@@ -756,18 +745,18 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                           <button
                             onClick={() => handleToggleProjectPlannerItem(it.id)}
                             className={`flex items-center justify-center w-4 h-4 rounded border ${
-                              it.done ? "border-emerald-500 bg-emerald-500 text-slate-950" : "border-slate-700 bg-slate-950"
+                              it.done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300/60 bg-[#e8f0f0]/80"
                             }`}
                           >
                             {it.done && <Check className="w-3 h-3" />}
                           </button>
-                          <span className={`text-[11px] ${it.done ? "line-through text-slate-500" : "text-slate-200"}`}>{it.text}</span>
+                          <span className={`text-[11px] ${it.done ? "line-through text-slate-500" : "text-slate-700"}`}>{it.text}</span>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  <div className="border-t border-slate-800 pt-3 space-y-2">
+                  <div className="border-t border-slate-300/40 pt-3 space-y-2">
                     <span className="text-[10px] font-mono text-turquoise uppercase block flex items-center gap-1">
                       <Bot className="w-3.5 h-3.5" /> Embedded Project AI Chatbot
                     </span>
@@ -779,7 +768,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                         <div
                           key={idx}
                           className={`p-2 rounded-lg text-[11px] ${
-                            m.sender === "You" ? "bg-turquoise-500/10 text-turquoise-bright ml-8" : "bg-slate-800 text-slate-200 mr-8"
+                            m.sender === "You" ? "bg-turquoise-500/10 text-turquoise-bright ml-8" : "bg-[#cbd5d8]/40 text-slate-700 mr-8"
                           }`}
                         >
                           <span className="text-[9px] font-mono block opacity-70">{m.sender}</span>
@@ -794,7 +783,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                         onChange={(e) => setProjectChatInput(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleProjectChatSend()}
                         placeholder="Ask the project AI…"
-                        className="flex-1 px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+                        className="flex-1 px-2 py-1.5 rounded-lg border border-slate-300/40 bg-[#f0f5f6]/50 text-xs placeholder-slate-400 focus:outline-none"
                       />
                       <button
                         onClick={handleProjectChatSend}
@@ -805,14 +794,14 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                     </div>
                     <button
                       onClick={handleInsertIntoNote}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-[10px] font-bold"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#cbd5d8]/40 hover:bg-[#a8b8be]/40 text-slate-700 font-mono text-[10px] font-bold"
                     >
                       <MessageSquarePlus className="w-3.5 h-3.5" /> Insert into note
                     </button>
                   </div>
 
-                  <div className="space-y-1 border-t border-slate-800 pt-3">
-                    <label className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                  <div className="space-y-1 border-t border-slate-300/40 pt-3">
+                    <label className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
                       <PenLine className="w-3.5 h-3.5" /> Project Notes
                     </label>
                     <textarea
@@ -834,8 +823,8 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
               <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">🗂️ CHALLENGE LOGS & PERSONAL CATALOGUES</h3>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3">
-              <h4 className="text-xs font-bold font-mono text-slate-300 tracking-wider uppercase flex items-center gap-1">
+            <div className="p-4 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/60 space-y-3">
+              <h4 className="text-xs font-bold font-mono text-slate-600 tracking-wider uppercase flex items-center gap-1">
                 <Archive className="w-3.5 h-3.5" /> Challenge Note Logs
               </h4>
               <textarea
@@ -853,7 +842,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                 </button>
                 <button
                   onClick={() => onNavigateToView?.("challenges")}
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 hover:text-turquoise transition-all"
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-300/40 text-xs font-mono text-slate-600 hover:text-turquoise transition-all"
                 >
                   View Challenges <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -863,24 +852,24 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   <p className="text-xs text-slate-500 text-center py-4 font-mono">No archived challenge logs yet.</p>
                 ) : (
                   challengeLogs.map((c) => (
-                    <div key={c.id} className="flex items-start justify-between p-3 rounded-xl border border-slate-800/80 bg-slate-950/40">
+                    <div key={c.id} className="flex items-start justify-between p-3 rounded-xl border border-slate-300/40/80 bg-[#f0f5f6]/60">
                       <div className="flex items-start gap-3">
                         <button
                           onClick={() => handleToggleChallengeLog(c.id)}
                           className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-lg border ${
-                            c.completed ? "border-emerald-500 bg-emerald-500 text-slate-950" : "border-slate-700 bg-slate-950"
+                            c.completed ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300/60 bg-[#e8f0f0]/80"
                           }`}
                         >
                           {c.completed && <Check className="w-3.5 h-3.5" />}
                         </button>
                         <div>
-                          <span className={`text-xs font-bold font-mono block ${c.completed ? "line-through text-slate-500" : "text-slate-200"}`}>{c.text}</span>
+                          <span className={`text-xs font-bold font-mono block ${c.completed ? "line-through text-slate-500" : "text-slate-700"}`}>{c.text}</span>
                           <span className="text-[9px] font-mono text-slate-500">{new Date(c.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <button
                         onClick={() => handleDeleteChallengeLog(c.id)}
-                        className="p-1.5 rounded-lg bg-slate-900/60 text-slate-500 hover:text-red-400 hover:bg-red-950/20 transition-all"
+                        className="p-1.5 rounded-lg bg-[#e8f0f0]/70 text-slate-500 hover:text-red-400 hover:bg-red-950/20 transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -890,8 +879,8 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
               </div>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3">
-              <h4 className="text-xs font-bold font-mono text-slate-300 tracking-wider uppercase flex items-center gap-1">
+            <div className="p-4 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/60 space-y-3">
+              <h4 className="text-xs font-bold font-mono text-slate-600 tracking-wider uppercase flex items-center gap-1">
                 <Tag className="w-3.5 h-3.5" /> Personal Catalogues
               </h4>
 
@@ -903,7 +892,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                     className={`px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase border transition-all ${
                       selectedCat === c.name
                         ? "border-turquoise-500 bg-turquoise-500/10 text-turquoise-bright"
-                        : "border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200"
+                        : "border-slate-300/40 bg-[#f0f5f6]/60 text-slate-500 hover:text-slate-700"
                     }`}
                   >
                     {c.name} ({c.items.length})
@@ -914,7 +903,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   placeholder="New category…"
-                  className="px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950/60 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+                  className="px-2 py-1.5 rounded-lg border border-slate-300/40 bg-[#f0f5f6]/50 text-xs text-slate-700 placeholder-slate-400 focus:outline-none"
                 />
                 <button
                   onClick={handleAddCat}
@@ -931,7 +920,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   onChange={(e) => setCatItemText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddCatItem()}
                   placeholder={`Add item to "${selectedCat}"…`}
-                  className="flex-1 px-2 py-1.5 rounded-lg border border-slate-800 bg-slate-950/60 text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+                  className="flex-1 px-2 py-1.5 rounded-lg border border-slate-300/40 bg-[#f0f5f6]/50 text-xs text-slate-700 placeholder-slate-400 focus:outline-none"
                 />
                 <button
                   onClick={handleAddCatItem}
@@ -948,9 +937,9 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
                   catalogues
                     .find((c) => c.name === selectedCat)
                     ?.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-800/80 bg-slate-950/30">
-                        <span className="text-[12px] text-slate-200 font-mono">{item}</span>
-                        <button onClick={() => handleDeleteCatItem(selectedCat, idx)} className="p-1 rounded bg-slate-900 text-slate-400 hover:text-red-400">
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-300/40/80 bg-[#e8f0f0]/40">
+                        <span className="text-[12px] text-slate-700 font-mono">{item}</span>
+                        <button onClick={() => handleDeleteCatItem(selectedCat, idx)} className="p-1 rounded bg-[#f0f5f6]/60 text-slate-500 hover:text-red-400">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
