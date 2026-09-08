@@ -437,8 +437,18 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Resolve __dirname in both ESM (tsx) and bundled CJS (production)
+const getDirname = (): string => {
+  try {
+    // ESM environment (dev with tsx)
+    return dirname(fileURLToPath(import.meta.url));
+  } catch {
+    // CJS environment (bundled production) - __dirname is global
+    return typeof __dirname !== "undefined" ? __dirname : process.cwd();
+  }
+};
+
+const __dirname = getDirname();
 
 const DATA_DIR = join(__dirname, "data");
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });

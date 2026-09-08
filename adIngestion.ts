@@ -158,8 +158,16 @@ export const SEED_ADS: IngestedAd[] = [
 // -------------------------------------------
 // Persistence helpers
 // -------------------------------------------
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Resolve __dirname in both ESM (tsx) and bundled CJS (production)
+function getDirname(): string {
+  try {
+    return dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return typeof __dirname !== "undefined" ? __dirname : process.cwd();
+  }
+}
+
+const __dirname = getDirname();
 const ADS_DIR = join(__dirname, "data", "ads");
 if (!existsSync(ADS_DIR)) mkdirSync(ADS_DIR, { recursive: true });
 
