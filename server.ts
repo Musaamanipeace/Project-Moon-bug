@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { AstroEvent, Challenge, ChatMessage, Comment, OnlineUser } from "./src/types";
+import { AstroEvent, Challenge, ChatMessage, Comment, OnlineUser, Game, RecommendationItem } from "./src/types";
 import { astroCatalogue } from "./src/lib/events";
 import { runIngestion, getCuratedAds } from "./adIngestion";
 
@@ -13,6 +13,31 @@ app.use(express.json());
 // In-Memory Database State
 const onlineUsers: Map<string, OnlineUser> = new Map();
 let tribeMessages: ChatMessage[] = [];
+const directMessages: Map<string, ChatMessage[]> = new Map();
+
+// Games state (status: "pending" | "approved" | "rejected")
+let gamesList: Game[] = [
+  {
+    id: "game-1",
+    title: "Cosmic Word Quest",
+    description: "Guess the hidden astronomical term from clues and hints.",
+    gameType: "phrase-guess",
+    hostNickname: "NebulaRae",
+    status: "approved",
+    createdAt: new Date().toISOString(),
+    participants: ["NebulaRae"],
+  },
+  {
+    id: "game-2",
+    title: "Deep Space Chess Tournament",
+    description: "Friendly match of interstellar tactics under the moon.",
+    gameType: "chess",
+    hostNickname: "OrbitKai",
+    status: "approved",
+    createdAt: new Date().toISOString(),
+    participants: ["OrbitKai"],
+  },
+];
 
 // Seed mock Astro Events from the shared catalogue
 const astroEvents: AstroEvent[] = JSON.parse(JSON.stringify(astroCatalogue));
@@ -410,6 +435,83 @@ app.post("/api/chat/messages/tribe", (req, res) => {
   res.json(newMessage);
 });
 
+// Helper for direct 1:1 conversation key
+function getDmKey(userA: string, userB: string) {
+  return [userA.toLowerCase(), userB.toLowerCase()].sort().join("__");
+}
+
+app.get("/api/chat/messages/companion/:nickname", (req, res) => {
+  const otherNick = req.params.nickname;
+  const myNick = (req.query.user as string) || "Guest";
+  const key = getDmKey(myNick, otherNick);
+  res.json(directMessages.get(key) || []);
+});
+
+app.post("/api/chat/messages/companion/:nickname", (req, res) => {
+  const otherNick = req.params.nickname;
+  const { sender, text } = req.body;
+  const key = getDmKey(sender || "Guest", otherNick);
+
+  const newMessage: ChatMessage = {
+    id: Date.now().toString(),
+    sender: sender || "Guest",
+    senderName: sender || "Guest",
+    text,
+    timestamp: new Date().toISOString()
+  };
+
+  const list = directMessages.get(key) || [];
+  list.push(newMessage);
+  if (list.length > 100) list.shift();
+  directMessages.set(key, list);
+
+  broadcastSSE("companion_message", { key, message: newMessage });
+  res.json(newMessage);
+});
+
+// Games API
+app.get("/api/games", (req, res) => {
+  // Returns approved games by default, or all if status query is provided
+  const { status } = req.query;
+  if (status) {
+    return res.json(gamesList.filter(g => g.status === status));
+  }
+  res.json(gamesList);
+});
+
+app.post("/api/games", (req, res) => {
+  const { title, description, gameType, hostNickname } = req.body;
+  if (!title) return res.status(400).json({ error: "Title is required" });
+
+  const newGame: Game = {
+    id: `game-${Date.now()}`,
+    title,
+    description: description || "",
+    gameType: gameType || "phrase-guess",
+    hostNickname: hostNickname || "Anonymous",
+    status: "pending", // (§7: Start with manual DB/approval flag, created pending)
+    createdAt: new Date().toISOString(),
+    participants: [hostNickname || "Anonymous"],
+  };
+
+  gamesList.unshift(newGame);
+  broadcastSSE("game_created", newGame);
+  res.json({ success: true, game: newGame, message: "Game submitted for approval!" });
+});
+
+app.post("/api/games/:id/join", (req, res) => {
+  const { id } = req.params;
+  const { nickname } = req.body;
+  const game = gamesList.find(g => g.id === id);
+  if (!game) return res.status(404).json({ error: "Game not found" });
+
+  if (nickname && !game.participants.includes(nickname)) {
+    game.participants.push(nickname);
+    broadcastSSE("game_joined", { gameId: id, nickname });
+  }
+  res.json({ success: true, game });
+});
+
 // SSE subscription route
 app.get("/api/stream", (req, res) => {
   res.writeHead(200, {
@@ -565,10 +667,94 @@ app.get("/api/feed", (req, res) => {
   res.json(result);
 });
 app.post("/api/feed", (req, res) => {
-  const { author, kind, title, body, refId, refType, experience } = req.body;
+  const { author, kind, title, body, refId, refType, experience, bannerUrl } = req.body;
   if (!author || !kind) return res.status(400).json({ error: "author and kind required" });
-  const item = addFeed({ author, kind, title, body, refId, refType, experience });
+  const item = addFeed({ author, kind, title, body, refId, refType, experience, bannerUrl });
   res.json(item);
+});
+
+// ---- Recommendations endpoints ----
+const seedRecommendations: RecommendationItem[] = [
+  {
+    id: "rec-1",
+    title: "Introduction to Astrophotography",
+    description: "Learn how to capture stunning images of the night sky with a camera or modern smartphone.",
+    category: "course",
+    author: "StarGazer Academy",
+    likes: 42,
+    url: "https://example.com/course/astrophotography",
+    bannerUrl: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=800&auto=format&fit=crop",
+  },
+  {
+    id: "rec-2",
+    title: "The Secret Life of the Moon",
+    description: "A breathtaking documentary exploring the geology, origins, and rhythm of Earth's satellite.",
+    category: "youtube",
+    author: "CosmoGeek",
+    likes: 38,
+    url: "https://youtube.com",
+    bannerUrl: "https://images.unsplash.com/photo-1522030299830-16b8d3d049fe?q=80&w=800&auto=format&fit=crop",
+  },
+  {
+    id: "rec-3",
+    title: "Cosmos by Carl Sagan",
+    description: "A monumental, poetic journey through space, time, science, and the human condition.",
+    category: "book",
+    author: "Carl Sagan",
+    likes: 56,
+    url: "https://example.com/books/cosmos",
+    bannerUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop",
+  },
+  {
+    id: "rec-4",
+    title: "Interstellar (4K Ultra HD)",
+    description: "A team of explorers travels through a wormhole in search of a new home for humanity.",
+    category: "movie",
+    author: "Christopher Nolan",
+    likes: 64,
+    url: "https://example.com/movies/interstellar",
+    bannerUrl: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=800&auto=format&fit=crop",
+  },
+  {
+    id: "rec-5",
+    title: "Orion SkyQuest XT8 Dobsonian Telescope",
+    description: "A classic 8-inch parabolic reflector telescope offering crisp views of lunar craters and Saturn's rings.",
+    category: "product",
+    author: "AstroGear Reviews",
+    likes: 29,
+    url: "https://example.com/products/xt8",
+    bannerUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop",
+  },
+];
+let recommendationsList: RecommendationItem[] = loadJson<RecommendationItem[]>("recommendations.json", seedRecommendations);
+
+app.get("/api/recommendations", (req, res) => {
+  const { category } = req.query;
+  if (category && category !== "all") {
+    return res.json(recommendationsList.filter(r => r.category === category));
+  }
+  res.json(recommendationsList);
+});
+
+app.post("/api/recommendations", (req, res) => {
+  const { title, description, category, author, url, bannerUrl } = req.body;
+  if (!title || !description) return res.status(400).json({ error: "Title and description are required" });
+
+  const newRec: RecommendationItem = {
+    id: `rec-${Date.now()}`,
+    title,
+    description,
+    category: category || "course",
+    author: author || "Stargazer",
+    likes: 1,
+    url: url || "",
+    bannerUrl: bannerUrl || "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=800&auto=format&fit=crop",
+  };
+
+  recommendationsList.unshift(newRec);
+  saveJson("recommendations.json", recommendationsList);
+  broadcastSSE("recommendation_new", newRec);
+  res.json(newRec);
 });
 
 // ---- Users / profile endpoints ----

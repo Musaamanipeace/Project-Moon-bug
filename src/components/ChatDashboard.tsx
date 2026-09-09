@@ -4,9 +4,9 @@ import { ChatMessage, OnlineUser } from "../types";
 
 interface ChatDashboardProps {
   nickname: string;
-  xp: number;
-  onAddXp: (amount: number) => void;
-  onDeductXp: (amount: number) => void;
+  xp?: number;
+  onAddXp?: (amount: number) => void;
+  onDeductXp?: (amount: number) => void;
   onNavigateToView?: (view: string) => void;
 }
 
@@ -177,7 +177,7 @@ How are you handling your processed sugar elimination challenge today? Let's for
           const filtered = prev.filter(m => m.id !== tempUserMsg.id);
           return [...filtered, ...data.messages];
         });
-        onAddXp(10);
+        onAddXp?.(10);
       }
     } catch (err) {
       console.error("AI Companion error:", err);
@@ -191,12 +191,6 @@ How are you handling your processed sugar elimination challenge today? Let's for
     if (!textToSend) return;
 
     if (!customText) {
-      // Custom text: charge 5 XP Anti-Spam Gate
-      if (xp < 5) {
-        alert("⚠️ Sending custom community messages requires exactly 5 XP. Use the free safe presets below!");
-        return;
-      }
-      onDeductXp(5);
       setTribeInput("");
     }
 
@@ -209,7 +203,7 @@ How are you handling your processed sugar elimination challenge today? Let's for
           text: textToSend
         })
       });
-      onAddXp(2); // Rebate some XP for participating
+      onAddXp?.(2);
     } catch (err) {
       console.error("Tribe messaging error:", err);
     }
@@ -220,8 +214,8 @@ How are you handling your processed sugar elimination challenge today? Let's for
     setAiMessagesCount(0);
     localStorage.setItem("mb_premium_sponsor", "true");
     localStorage.setItem("mb_ai_messages_count", "0");
-    onAddXp(500); // Massive boost
-    alert("💖 Thank you for sponsoring the decentralized web! Computing tokens reset to UNLIMITED. Enjoy +500 XP!");
+    onAddXp?.(500);
+    alert("💖 Thank you for supporting decentralized discussion! Computing tokens reset to UNLIMITED.");
   };
 
   const handleSpeakText = (text: string) => {
@@ -238,17 +232,17 @@ How are you handling your processed sugar elimination challenge today? Let's for
   return (
     <div className="space-y-6 p-4 max-w-5xl mx-auto text-slate-200">
       
-      {/* Linux Mint Tooltip Metrics Box */}
+      {/* Community Tooltip Metrics Box */}
       <div 
         className="relative bg-slate-950 border border-emerald-500/30 p-3.5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-help group transition-all"
-        onMouseEnter={() => setHoveredMetrics(`Active_Tribe_Nodes: ${onlineUsers.length + 5} | Anti_Spam_Cost: 5 XP | Claude_Token_Limit: 5/Day`)}
+        onMouseEnter={() => setHoveredMetrics(`Active_Tribe_Nodes: ${onlineUsers.length + 5} | Protocol: P2P Mesh | Queries: ${aiMessagesCount}/5`)}
         onMouseLeave={() => setHoveredMetrics(null)}
       >
         <div className="flex items-center gap-2.5">
           <Bot className="w-5 h-5 text-turquoise" />
           <div>
-            <span className="text-xs font-mono font-bold text-slate-100 block">💬 Decent_Community_Chat_Gate & AI Companion</span>
-            <span className="text-[10px] text-slate-400 font-mono">Anti-spam transaction system live: custom broadcasts cost 5 XP</span>
+            <span className="text-xs font-mono font-bold text-slate-100 block">💬 Decentralized Community Chat &amp; AI Companion</span>
+            <span className="text-[10px] text-slate-400 font-mono">Real-time peer chat &amp; astronomical intelligence</span>
           </div>
         </div>
 
@@ -299,12 +293,12 @@ How are you handling your processed sugar elimination challenge today? Let's for
               <span className="text-sm">{peer.avatar}</span>
               <div className="flex-1 min-w-0">
                 <span className="text-xs font-mono font-bold text-slate-200 block truncate">{peer.id}</span>
-                <span className="text-[9px] text-emerald-400 font-mono block">🔥 {peer.xp} XP</span>
+                <span className="text-[9px] text-emerald-400 font-mono block">✨ Peer Node</span>
               </div>
               <a 
                 href={peer.link}
                 className="p-1 rounded bg-slate-950 border border-slate-800 text-slate-400 hover:text-turquoise transition-colors"
-                title="View Portfolio Grid"
+                title="View Profile"
               >
                 <ArrowUpRight className="w-3 h-3" />
               </a>
@@ -442,11 +436,11 @@ How are you handling your processed sugar elimination challenge today? Let's for
             <div ref={bottomRef} />
           </div>
 
-          {/* Preset comments for Anti-Spam Gate */}
+          {/* Preset comments for Quick Dispatch */}
           {chatTab === "tribe" && (
             <div className="px-4 py-2 border-t border-slate-800 bg-slate-950/30">
               <span className="text-[8px] font-mono text-slate-500 block uppercase mb-1">
-                🔓 Free Safe Comment Presets (Bypasses the 5 XP Gate):
+                💬 Quick Community Comment Presets:
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {safeComments.map((comment, cIdx) => (
@@ -506,7 +500,7 @@ How are you handling your processed sugar elimination challenge today? Let's for
                   type="text"
                   value={tribeInput}
                   onChange={(e) => setTribeInput(e.target.value)}
-                  placeholder="Broadcast live custom message (costs exactly 5 XP)..."
+                  placeholder="Broadcast live message to active tribe nodes..."
                   className="flex-1 p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-turquoise-500/60 font-mono"
                 />
                 <button

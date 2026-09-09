@@ -41,8 +41,8 @@ import { api, FeedItem } from "../lib/api";
 interface ProfileDashboardProps {
   nickname: string;
   onChangeNickname: (name: string) => void;
-  xp: number;
-  onAddXp: (amount: number) => void;
+  xp?: number;
+  onAddXp?: (amount: number) => void;
   onNavigateToView?: (view: string) => void;
 }
 
@@ -417,8 +417,6 @@ export default function ProfileDashboard({
     setNicknameDraft(nickname);
   }, [nickname]);
 
-  const rank = getRank(xp);
-  const rankProgress = getRankProgress(xp, rank);
   const ageYears = computeAgeYears(birthDate.value);
 
   /* ---- Possessions accordion ---- */
@@ -448,62 +446,6 @@ export default function ProfileDashboard({
     };
   }, [nickname]);
 
-  /* ---- Donation panel ---- */
-  const CASH_RANK_THRESHOLD = 300;
-  const cashUnlocked = xp >= CASH_RANK_THRESHOLD;
-  const [donateTo, setDonateTo] = useState("");
-  const [donateXp, setDonateXp] = useState("");
-  const [donateCash, setDonateCash] = useState("");
-  const [donateStatus, setDonateStatus] = useState("");
-
-  const handleDonateXp = () => {
-    const recipient = donateTo.trim();
-    const amount = Number.parseInt(donateXp, 10);
-
-    if (!recipient) {
-      setDonateStatus("Enter the username you want to donate to.");
-      return;
-    }
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setDonateStatus("Enter an XP amount greater than 0.");
-      return;
-    }
-    if (amount > xp) {
-      setDonateStatus(`Not enough XP. Your balance is ${xp} XP.`);
-      return;
-    }
-    const confirmed = window.confirm(`Donate ${amount} XP to ${recipient}?`);
-    if (!confirmed) {
-      setDonateStatus("Donation cancelled.");
-      return;
-    }
-    onAddXp(-amount);
-    setDonateXp("");
-    setDonateStatus(`Donated ${amount} XP to ${recipient}.`);
-  };
-
-  const handleDonateCash = () => {
-    const recipient = donateTo.trim();
-    const amount = Number.parseFloat(donateCash);
-
-    if (!cashUnlocked) {
-      setDonateStatus(`Cash transfers unlock at ${CASH_RANK_THRESHOLD} XP (Level 3+).`);
-      return;
-    }
-    if (!recipient) {
-      setDonateStatus("Enter the username you want to donate to.");
-      return;
-    }
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setDonateStatus("Enter a cash amount greater than 0.");
-      return;
-    }
-    setDonateStatus(
-      `Cash transfer of ${amount} to ${recipient} is queued (higher-rank feature — no payment is processed here).`
-    );
-    setDonateCash("");
-  };
-
   /* ------------------------------- render -------------------------------- */
 
   return (
@@ -524,7 +466,7 @@ export default function ProfileDashboard({
               {nickname || "anonymous"}
             </h1>
             <p className="text-[10px] font-mono text-slate-500">
-              Level {rank.level} · {rank.label} · {xp} XP
+              Community Member &bull; Stargazer
             </p>
           </div>
 
@@ -583,26 +525,6 @@ export default function ProfileDashboard({
                 >
                   Save
                 </button>
-              </div>
-            </div>
-
-            {/* rank */}
-            <div className="space-y-1.5">
-              <span className={`${LABEL} block`}>Rank</span>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono font-bold text-turquoise flex items-center gap-1.5">
-                    <Trophy className="w-4 h-4" />
-                    Level {rank.level}: {rank.label}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-400">{xp} XP</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-slate-900 overflow-hidden">
-                  <div className="h-full bg-turquoise-500" style={{ width: `${rankProgress}%` }} />
-                </div>
-                <span className="text-[9px] font-mono text-slate-500">
-                  {rank.next === null ? "Highest rank reached" : `${rank.next - xp} XP to Level ${rank.level + 1}`}
-                </span>
               </div>
             </div>
 
@@ -784,103 +706,6 @@ export default function ProfileDashboard({
                   </article>
                 ))}
               </div>
-            )}
-          </section>
-
-          {/* ============ 3c. User donation feature ============ */}
-          <section className={`${CARD} p-5 space-y-4`}>
-            <div className="space-y-1">
-              <h2 className={CARD_TITLE}>
-                <Gift className="w-4 h-4" />
-                User Donation
-              </h2>
-              <p className="text-[10px] font-mono text-slate-500">
-                Donate XP to another user. Cash transfers unlock at higher ranks.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className={`${LABEL} block`}>Donate To (Username)</span>
-              <input
-                type="text"
-                value={donateTo}
-                onChange={(e) => setDonateTo(e.target.value)}
-                placeholder="e.g. moonrise_734"
-                className={`${INPUT} w-full`}
-              />
-            </div>
-
-            {/* XP donation */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
-              <span className={`${LABEL} flex items-center gap-1.5`}>
-                <Coins className="w-3.5 h-3.5 text-turquoise" />
-                XP Donation
-              </span>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  value={donateXp}
-                  onChange={(e) => setDonateXp(e.target.value)}
-                  placeholder="XP amount"
-                  className={`${INPUT} flex-1`}
-                />
-                <button type="button" onClick={handleDonateXp} className={BTN}>
-                  Donate XP
-                </button>
-              </div>
-              <span className="text-[9px] font-mono text-slate-500 block">Your balance: {xp} XP</span>
-            </div>
-
-            {/* Cash transfer (higher ranks) */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className={`${LABEL} flex items-center gap-1.5`}>
-                  <Banknote className="w-3.5 h-3.5 text-turquoise" />
-                  Cash Transfer
-                </span>
-                <span
-                  className={`text-[8px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border ${
-                    cashUnlocked
-                      ? "text-turquoise border-turquoise-500/40 bg-turquoise-500/10"
-                      : "text-slate-500 border-slate-800 bg-slate-900/60"
-                  }`}
-                >
-                  {cashUnlocked ? "Unlocked" : "Locked"}
-                </span>
-              </div>
-
-              {cashUnlocked ? (
-                <>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      step="0.01"
-                      value={donateCash}
-                      onChange={(e) => setDonateCash(e.target.value)}
-                      placeholder="Cash amount"
-                      className={`${INPUT} flex-1`}
-                    />
-                    <button type="button" onClick={handleDonateCash} className={BTN}>
-                      Send Cash
-                    </button>
-                  </div>
-                  <span className="text-[9px] font-mono text-slate-500 block leading-relaxed">
-                    Cash transfers are enabled at higher rank (Level 3+, {CASH_RANK_THRESHOLD}+ XP). This panel records
-                    your intent only — no payment is processed here.
-                  </span>
-                </>
-              ) : (
-                <span className="text-[9px] font-mono text-slate-500 block leading-relaxed">
-                  Direct cash transfers are enabled at higher rank. Reach {CASH_RANK_THRESHOLD} XP (Level 3) to unlock
-                  this option — you currently have {xp} XP.
-                </span>
-              )}
-            </div>
-
-            {donateStatus && (
-              <p className="text-[10px] font-mono text-turquoise-dim leading-relaxed">{donateStatus}</p>
             )}
           </section>
         </div>

@@ -130,7 +130,22 @@ export interface Challenge {
   isCustom?: boolean;
   createdBy?: string;
   state: 'Unfinished' | 'Finished' | 'Completed / Unaudited' | 'Evolving';
-  rewardXp?: number;
+}
+
+export interface Ad {
+  id: string;
+  brandName: string;
+  creatorName: string;
+  category: string;
+  adType: string;
+  title: string;
+  description: string;
+  mediaUrl: string;
+  redirectUrl: string;
+  views: number;
+  clicks: number;
+  likes: number;
+  status: "active" | "paused";
 }
 
 export interface JournalEntry {

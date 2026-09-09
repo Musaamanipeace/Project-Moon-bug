@@ -18,7 +18,7 @@ export default function NotificationsDashboard({
   const notifications: { category: string; message: string; icon?: React.ReactNode }[] = [
     {
       category: "System",
-      message: `Welcome to Project-moonrise, ${displayName}. Complete challenges to earn Cheese.`,
+      message: `Welcome to Project Moonrise, ${displayName}. Connect with your tribe and explore astronomical tools.`,
       icon: <Bell className="w-3.5 h-3.5" />,
     },
     ...events.slice(0, 3).map((ev) => ({
@@ -28,17 +28,17 @@ export default function NotificationsDashboard({
     })),
     ...challenges.slice(0, 3).map((ch) => ({
       category: "Challenge",
-      message: `Challenge ready: ${ch.title} (+${ch.rewardXp} XP).`,
+      message: `Challenge ready: ${ch.title}.`,
       icon: <Trophy className="w-3.5 h-3.5" />,
     })),
     {
       category: "Community",
-      message: "Find Someone Like Me helps you match with peers.",
+      message: "Tribe matchmaking helps you discover and connect with peers.",
       icon: <Users className="w-3.5 h-3.5" />,
     },
     {
-      category: "Community",
-      message: "Watch nature-conscious ads to earn Cheese.",
+      category: "Showcase",
+      message: "Explore curated, nature-conscious brand showcases in Watch Ads.",
       icon: <PlayCircle className="w-3.5 h-3.5" />,
     },
   ];

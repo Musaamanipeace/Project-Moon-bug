@@ -6,8 +6,8 @@ import {
 } from "lucide-react";
 
 interface NotesWorkspaceProps {
-  xp: number;
-  onAddXp: (amount: number) => void;
+  xp?: number;
+  onAddXp?: (amount: number) => void;
   onNavigateToView?: (view: string) => void;
 }
 
@@ -168,14 +168,14 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
     setPlannerText("");
     setPlannerDeadline("");
     setPlannerAlert("");
-    onAddXp(5);
+    onAddXp?.(5);
   };
 
   const handleTogglePlannerTask = (id: string) => {
     const updated = plannerTasks.map((t) => {
       if (t.id !== id) return t;
       const next = !t.done;
-      if (next && !t.done) onAddXp(10);
+      if (next && !t.done) onAddXp?.(10);
       return { ...t, done: next };
     });
     setPlannerTasks(updated);
@@ -195,7 +195,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
     setIdeas(updated);
     save(IDEA_KEY, updated);
     setIdeaText("");
-    onAddXp(10);
+    onAddXp?.(10);
   };
 
   const handleDeleteIdea = (id: string) => {
@@ -221,7 +221,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
     save(PROJECT_KEY, updated);
     setNewProjectName("");
     setNewProjectDesc("");
-    onAddXp(20);
+    onAddXp?.(20);
   };
 
   const updateSelectedProject = (updater: (p: Project) => Project) => {
@@ -325,7 +325,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
     setChallengeLogs(updated);
     save(CHALLENGE_LOG_KEY, updated);
     setChallengeLogText("");
-    onAddXp(5);
+    onAddXp?.(5);
   };
 
   const handleToggleChallengeLog = (id: string) => {
@@ -403,9 +403,8 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
         {scopeBtn("archives", "Archives & Lists", Archive)}
 
           <div className="md:mt-auto pt-3 border-t border-slate-300/40 px-1">
-            <span className="text-[10px] font-mono text-slate-500 uppercase">Notebook XP</span>
-            <span className="text-sm font-bold font-mono text-turquoise block">{xp} Cheese</span>
-            <span className="text-[9px] font-mono text-slate-500">Daytime writing mode</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase">Focus Mode</span>
+            <span className="text-xs font-bold font-mono text-slate-700 block mt-0.5">Daytime Writing</span>
           </div>
       </div>
 
@@ -414,7 +413,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">📅 DAILY PLANNER</h3>
-                <span className="text-[10px] font-mono text-slate-500">+5 XP / task · +10 done</span>
+                <span className="text-[10px] font-mono text-slate-500">Plan &bull; Execute &bull; Reflect</span>
               </div>
 
             <div className="flex flex-wrap gap-2">
@@ -551,7 +550,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">💡 IDEAS — QUICK CAPTURE</h3>
-              <span className="text-[10px] font-mono text-slate-500">+10 XP</span>
+              <span className="text-[10px] font-mono text-slate-500">Fast thoughts</span>
             </div>
 
             <div className="p-4 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/60 space-y-3">
@@ -613,7 +612,7 @@ export default function NotesWorkspace({ xp, onAddXp, onNavigateToView }: NotesW
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold font-mono text-turquoise tracking-wider uppercase">📁 PROJECTS</h3>
-              <span className="text-[10px] font-mono text-slate-500">+20 XP</span>
+              <span className="text-[10px] font-mono text-slate-500">Initiatives</span>
             </div>
 
             <div className="p-4 rounded-xl border border-slate-300/40 bg-[#f0f5f6]/60 space-y-3">

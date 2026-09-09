@@ -192,7 +192,6 @@ const FALLBACK_CHALLENGES: Challenge[] = [
     scope: "Self-Improvement/Wellbeing",
     participationMode: "Solo",
     description: "Construct a master lifetime blueprint covering your core goals across health, skills, and purpose, then lock in a firm commencement date.",
-    rewardXp: 150,
     steps: [],
     surveyQuestions: [],
     bonusTasks: [],
@@ -377,8 +376,8 @@ export default function ChallengesDashboard({ onNavigateToView, onShareFeed }: C
 
       {/* 7. CHALLENGES CATALOGUE */}
       <SectionCard icon={<Trophy className="w-4 h-4 text-turquoise" />} title="Challenges Catalogue">
-          <p className="text-[11px] text-slate-400 font-mono mb-3">
-            Complete community challenges to earn Cheese and share a badge to your feed.
+            <p className="text-[11px] text-slate-400 font-mono mb-3">
+            Complete community challenges to achieve milestones and share a badge to your feed.
           {catError && <span className="text-turquoise/70"> (showing offline copy)</span>}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -58,7 +58,7 @@ export default function CataloguesDashboard({ onNavigateToView, onShareFeed }: C
     }));
     const campaigns: CatItem[] = DEFAULT_ADS.map((a) => ({
       id: a.id, kind: "campaign", title: a.title, description: a.description,
-      category: a.adType, badge: a.category, brand: a.brandName, icon: "📢",
+      category: a.category, badge: a.category, brand: a.brandName, icon: "📢",
     }));
     const brandItems: CatItem[] = brands.map((b) => ({
       id: b.id, kind: "brand", title: b.name, description: `${b.tagline} (${b.category})`,

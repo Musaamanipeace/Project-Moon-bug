@@ -102,7 +102,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline, onNavigat
 
       if (res.ok) {
         const data = await res.json();
-        onAddXp(data.challenge.rewardXp);
+        onAddXp(data.challenge.rewardXp || 0);
         fetchData();
         // Update selected modal view if active
         if (selectedItem && selectedItem.data.id === challengeId) {
@@ -111,7 +111,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline, onNavigat
             data: data.challenge
           });
         }
-        alert(`Success! Challenge complete. Awarded +${data.challenge.rewardXp} XP!`);
+        alert("Success! Challenge logged to community ledger.");
       }
     } catch (err) {
       console.error(err);
@@ -277,7 +277,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline, onNavigat
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-[10px] font-mono text-slate-500 uppercase">
-                      Award: +{ch.rewardXp} XP
+                      Community Quest
                     </span>
                     {completed ? (
                       <span className="text-[8px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
@@ -341,7 +341,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline, onNavigat
                 <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-widest ${
                   selectedItem.type === "event" ? getRarityBadge(selectedItem.data.rarity) : "bg-turquoise-500 text-slate-950 font-extrabold"
                 }`}>
-                  {selectedItem.type === "event" ? selectedItem.data.rarity : `Reward: +${selectedItem.data.rewardXp} XP`}
+                  {selectedItem.type === "event" ? selectedItem.data.rarity : "Community Challenge"}
                 </span>
               </div>
 
@@ -459,7 +459,7 @@ export default function EventsDashboard({ nickname, onAddXp, isOnline, onNavigat
                       <Award className="w-4 h-4 text-turquoise-dim animate-spin-slow" />
                       <span>Assignment Protocol</span>
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400 font-bold">Value: +{selectedItem.data.rewardXp} XP</span>
+                    <span className="text-[10px] font-mono text-slate-400 font-bold">Milestone Challenge</span>
                   </div>
                   <p className="text-xs text-slate-200 leading-relaxed font-mono">
                     {selectedItem.data.goal}
